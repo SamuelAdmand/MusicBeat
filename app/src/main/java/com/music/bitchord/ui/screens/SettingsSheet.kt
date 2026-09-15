@@ -867,7 +867,6 @@ fun SettingsScreen(
                 withLink(LinkAnnotation.Url("https://discord.gg/pDdKfrdHY6", linkStyles)) {
                     append("Discord")
                 }
-                append("\n~YouTube Music Backend")
             },
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1121,80 +1120,7 @@ private fun openEqualizer(context: Context, sessionId: Int) {
 }
 
 
-/** Who you're signed in as, straight from YouTube Music's account menu. */
-@Composable
-internal fun AccountCard(
-    signedIn: Boolean,
-    account: Account?,
-    onSignIn: () -> Unit,
-    onClick: (() -> Unit)? = null,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = GROUP_INSET)
-            .clip(GroupShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .then(
-                when {
-                    signedIn && onClick != null -> Modifier.clickable(onClick = onClick)
-                    !signedIn -> Modifier.clickable(onClick = onSignIn)
-                    else -> Modifier
-                },
-            )
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (account?.thumbnailUrl != null) {
-            AsyncImage(
-                model = account.thumbnailUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(52.dp).clip(CircleShape).thumbnailBorder(CircleShape),
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.outline),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = account?.name
-                    ?: stringResource(if (signedIn) R.string.signed_in else R.string.not_signed_in),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = account?.email?.takeIf { it.isNotBlank() }
-                    ?: stringResource(
-                        if (signedIn) R.string.youtube_music_account else R.string.tap_to_sign_in_google,
-                    ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (!signedIn) {
-            Spacer(Modifier.width(8.dp))
-            Chevron()
-        }
-    }
-}
+
 
 
 

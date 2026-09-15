@@ -1022,19 +1022,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     init {
-        startSearchPipeline()
-        startSuggestPipeline()
-        loadHome()
-        loadExplore()
-        if (_signedIn.value) {
-            loadLibrary()
-            loadAccount()
-            loadPlaylists()
-        }
-        viewModelScope.launch {
-            // drop(1): the current value is just the count so far, not a play.
-            PlaybackTracker.registeredPlays.drop(1).collect { homeStale = true }
-        }
         loadLocalMusic()
         viewModelScope.launch {
             AppSettings.blacklistedFolders.drop(1).collect {

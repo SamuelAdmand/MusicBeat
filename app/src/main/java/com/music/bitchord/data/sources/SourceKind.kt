@@ -127,15 +127,6 @@ enum class SourceKind(
         rank = 1,
     ),
 
-    JIOSAAVN(
-        label = "JioSaavn",
-        detail = "JioSaavn high-quality streams up to 320kbps AAC/MP4. A lossy fallback, tried before YouTube.",
-        labels = listOf("High Quality", "320kbps"),
-        needsServer = false,
-        canServeLossless = false,
-        worthPrefetching = true,
-        rank = 2,
-    ),
 
     /**
      * The source the app was built on, listed here so it always has a fixed

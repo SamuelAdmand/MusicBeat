@@ -117,13 +117,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.music.bitchord.auth.DiscordLoginScreen
-import com.music.bitchord.auth.WebSessionMode
-import com.music.bitchord.auth.YtMusicLoginScreen
 import com.music.bitchord.data.LocalMediaRepository
 import com.music.bitchord.data.NerdStats
 import com.music.bitchord.data.TrackLog
-import com.music.bitchord.data.innertube.InnertubeParser
 import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.LikeStatus
@@ -135,18 +131,8 @@ import com.music.bitchord.data.model.UiState
 import com.music.bitchord.data.model.durationMillis
 import com.music.bitchord.data.scrobbling.LastFM
 import com.music.bitchord.data.settings.AppSettings
-import com.music.bitchord.data.settings.LibrarySort
 import com.music.bitchord.data.settings.ThemeMode
-import com.music.bitchord.ui.components.AccountProfileSelector
-import com.music.bitchord.ui.screens.AccountAndScrobblingScreen
-import com.music.bitchord.ui.screens.DiscordDialog
-import com.music.bitchord.ui.screens.DiscordDialogHost
-import com.music.bitchord.ui.screens.DiscordScreen
-import com.music.bitchord.ui.screens.HistoryScreen
 import com.music.bitchord.ui.screens.SettingsScreen
-import com.music.bitchord.ui.screens.SourceEditorAlert
-import com.music.bitchord.ui.screens.SourcesScreen
-import com.music.bitchord.ui.screens.SpotifyCanvasAuthScreen
 import com.music.bitchord.playback.LinkRequest
 import com.music.bitchord.playback.MusicLink
 import com.music.bitchord.playback.OriginalVersion
@@ -203,21 +189,16 @@ import com.music.bitchord.ui.components.LyricsSourcesDialog
 import com.music.bitchord.ui.icons.BitChordIcons
 import androidx.media3.common.Player
 import com.music.bitchord.data.YtMusicRepository
+import com.music.bitchord.data.innertube.InnertubeParser
 import com.music.bitchord.ui.player.NowPlayingScreen
 import com.music.bitchord.ui.player.dockedPlayerAvailable
 import com.music.bitchord.ui.player.dockedPlayerWidth
-import com.music.bitchord.ui.screens.DetailScreen
-import com.music.bitchord.ui.screens.ExploreScreen
-import com.music.bitchord.ui.screens.LocalMusicScreen
+import com.music.bitchord.data.settings.SongSort
+import com.music.bitchord.feature.localsongactions.ui.components.LocalLyricsEditorSheet
 import com.music.bitchord.feature.localsongactions.ui.components.LocalSongDetailsSheet
 import com.music.bitchord.feature.localsongactions.ui.components.LocalTagEditorSheet
-import com.music.bitchord.feature.localsongactions.ui.components.LocalLyricsEditorSheet
-import com.music.bitchord.ui.screens.HomeScreen
-import com.music.bitchord.ui.screens.LibraryGridPage
-import com.music.bitchord.ui.screens.LibraryScreen
-import com.music.bitchord.ui.screens.MoodGenrePlaylistsScreen
-import com.music.bitchord.ui.screens.SearchScreen
-import com.music.bitchord.data.settings.SongSort
+import com.music.bitchord.ui.screens.DetailScreen
+import com.music.bitchord.ui.screens.LocalMusicScreen
 import com.music.bitchord.ui.replay.ReplayScreen
 import com.music.bitchord.ui.replay.cards
 import com.music.bitchord.ui.replay.ReplayShareSheet
@@ -396,56 +377,17 @@ private fun BitChordApp(
             PlayerDeepLink.handled()
         }
     }
-    /**
-     * What the in-app browser is open for, or null while it is closed —
-     * signing in, or picking a channel in YouTube Music's own Accounts list.
-     */
-    var webSession by remember { mutableStateOf<WebSessionMode?>(null) }
+
     var showSettings by remember { mutableStateOf(false) }
-    // Replay: the page, the stories over it, and the share sheet over those.
-    // Three states rather than one enum because they stack — the stories are
-    // opened from the page and the share sheet from either, and closing one
-    // has to reveal what it was opened from.
     var showReplay by remember { mutableStateOf(false) }
     var replayStory by remember { mutableStateOf<ReplayStoryPage?>(null) }
     var showReplayShare by remember { mutableStateOf(false) }
-    /** Which story card the share sheet is for, or null for the whole Replay. */
     var replaySharePage by remember { mutableStateOf<ReplayStoryPage?>(null) }
-    var showAccountScrobbling by remember { mutableStateOf(false) }
-    var showSources by remember { mutableStateOf(false) }
-    var showSpotifyCanvasAuth by remember { mutableStateOf(false) }
-    
-    // Hosted here rather than inside SourcesScreen so its frosted card has
-    // something to blur: that screen is drawn inside the `hazeSource` subtree,
-    // and a haze effect sampling the layer it is itself part of renders with no
-    // background at all. Hosting it here also puts the scrim over the tab bar
-    // and the mini player, like every other alert in the app.
-    var editingSource by remember { mutableStateOf<SourceConfig?>(null) }
-    var showHistory by remember { mutableStateOf(false) }
-    // A Library shelf's "Show all" — the shelf it was opened from, so its own
-    // cards can be laid out again as a full-screen grid. See [LibraryGridPage].
-    var libraryShowAll by remember { mutableStateOf<HomeShelf?>(null) }
-    var librarySortMenuOpen by remember { mutableStateOf(false) }
     var showLyricsSources by remember { mutableStateOf(false) }
     var showAppLanguage by remember { mutableStateOf(false) }
-    var showAccountSelector by remember { mutableStateOf(false) }
     var showListenBrainzLogin by remember { mutableStateOf(false) }
     var showLastfmLogin by remember { mutableStateOf(false) }
-    /**
-     * Whether the download manager is open.
-     *
-     * Not [rememberSaveable]: the list behind it does not survive the process
-     * either (see [com.music.bitchord.download.DownloadSession]), and a sheet
-     * restored over an empty one would be a manager with nothing to manage.
-     */
     var showDownloadManager by remember { mutableStateOf(false) }
-    // Discord Rich Presence: its own page under Account & integrations, its own
-    // full-screen sign-in, and one slot for whichever of its alerts is open.
-    // The alerts live out here rather than on the page because their scrim has
-    // to cover the tab bar and mini player, which are drawn after it.
-    var showDiscord by remember { mutableStateOf(false) }
-    var showDiscordLogin by remember { mutableStateOf(false) }
-    var discordDialog by remember { mutableStateOf<DiscordDialog?>(null) }
     var songActions by remember { mutableStateOf<Song?>(null) }
     /**
      * Whether the track menu that is up was opened from the player.
@@ -496,31 +438,6 @@ private fun BitChordApp(
     // page and stories are the same case — dark artwork either way.
     SystemBarIcons(dark = !darkTheme && !showNowPlaying && !showReplay && replayStory == null)
 
-    val homeState by viewModel.home.collectAsStateWithLifecycle()
-    val homeLoadingMore by viewModel.homeLoadingMore.collectAsStateWithLifecycle()
-    val homeRecentlyPlayedLoading by viewModel.homeRecentlyPlayedLoading.collectAsStateWithLifecycle()
-
-    val query by viewModel.query.collectAsStateWithLifecycle()
-    val results by viewModel.results.collectAsStateWithLifecycle()
-    val exploreState by viewModel.explore.collectAsStateWithLifecycle()
-    val selectedMoodGenre by viewModel.selectedMoodGenre.collectAsStateWithLifecycle()
-    val moodGenreShelves by viewModel.moodGenreShelves.collectAsStateWithLifecycle()
-    val libraryState by viewModel.library.collectAsStateWithLifecycle()
-    val filter by viewModel.filter.collectAsStateWithLifecycle()
-    val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
-    val account by viewModel.account.collectAsStateWithLifecycle()
-    val selectedChannelName by viewModel.selectedChannelName.collectAsStateWithLifecycle()
-    val googleAccounts by viewModel.googleAccounts.collectAsStateWithLifecycle()
-    val activeAccountId by viewModel.activeAccountId.collectAsStateWithLifecycle()
-    val activeProfileId by viewModel.activeProfileId.collectAsStateWithLifecycle()
-    val historyState by viewModel.history.collectAsStateWithLifecycle()
-    val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
-    val lyricsSource by viewModel.lyricsSource.collectAsStateWithLifecycle()
-    val lyricsChecked by viewModel.lyricsChecked.collectAsStateWithLifecycle()
-    val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
-    val searchSuggestions by viewModel.suggestions.collectAsStateWithLifecycle()
-    val searchLoadingMore by viewModel.searchLoadingMore.collectAsStateWithLifecycle()
-    val searchScrollReset by viewModel.searchScrollReset.collectAsStateWithLifecycle()
     val detailStack by viewModel.detailStack.collectAsStateWithLifecycle()
     val detail = detailStack.lastOrNull()
     // Local Music has no artwork to wash the bar in, so it renders with a
@@ -546,16 +463,16 @@ private fun BitChordApp(
     val pinnedToOriginal by OriginalVersion.pinned.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val playlistsLoading by viewModel.playlistsLoading.collectAsStateWithLifecycle()
+    val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
+    val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
+    val lyricsSource by viewModel.lyricsSource.collectAsStateWithLifecycle()
+    val lyricsChecked by viewModel.lyricsChecked.collectAsStateWithLifecycle()
+    val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
 
     // Settings has no tab of its own — it sits on top of whatever tab was
     // selected. A pushed album/artist page (from the player, search, etc.)
     // should surface above it rather than being hidden behind it.
     LaunchedEffect(detail) { if (detail != null) showSettings = false }
-    LaunchedEffect(showSettings) {
-        if (!showSettings) {
-            showAccountScrobbling = false
-        }
-    }
 
     // The Downloads page is a snapshot of the folder, taken when it was opened.
     // Saving a track or deleting one while it is on screen changes what belongs
@@ -644,34 +561,10 @@ private fun BitChordApp(
         }
     }
 
-    val homeListState = rememberLazyListState()
-    val exploreListState = rememberLazyListState()
-    val moodGenreListState = rememberLazyListState()
-    val libraryListState = rememberLazyListState()
-    val historyListState = rememberLazyListState()
-    val libraryShowAllGridState = rememberLazyGridState()
     val searchListState = rememberLazyListState()
-    val currentListState = when (selectedTab) {
-        TAB_HOME -> homeListState
-        TAB_EXPLORE -> if (selectedMoodGenre == null) exploreListState else moodGenreListState
-        TAB_LIBRARY -> libraryListState
-        else -> searchListState
-    }
-
-    // Pull-to-refresh: the drag lives with the feed, but the indicator is the
-    // line under the top bar, so the state has to be visible to both.
-    val homePull = rememberPullToRefreshState()
-    val explorePull = rememberPullToRefreshState()
-    val libraryPull = rememberPullToRefreshState()
-    val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
-    val currentFeed: MainViewModel.Feed? = null
-
-    val currentPull = when (currentFeed) {
-        MainViewModel.Feed.HOME -> homePull
-        MainViewModel.Feed.EXPLORE -> explorePull
-        MainViewModel.Feed.LIBRARY -> libraryPull
-        null -> null
-    }
+    val currentListState = searchListState
+    val refreshing = false
+    val currentPull = null
     val scrolled by remember(currentListState) {
         derivedStateOf {
             currentListState.firstVisibleItemIndex > 0 ||
@@ -1361,8 +1254,7 @@ private fun BitChordApp(
     // picture, so they cannot disagree. Read while any of them is on screen —
     // which includes the Library tab, since the cards live at the top of it.
     // See [rememberReplayState].
-    val replayOpen = showReplay || replayStory != null || showReplayShare ||
-        (selectedTab == TAB_LIBRARY && detail == null && !showSettings)
+    val replayOpen = showReplay || replayStory != null || showReplayShare
     val (replay, setReplayPeriod) = rememberReplayState(replayOpen)
     val replayCards = remember(replay.summary) {
         replay.summary?.takeUnless { it.isEmpty }?.cards(context).orEmpty()
@@ -1607,46 +1499,20 @@ private fun BitChordApp(
             showReplay = false
         }
         BackHandler(
-            enabled = detail != null && !showSettings && !showAccountScrobbling && !showSources &&
-                !showReplay,
+            enabled = detail != null && !showSettings && !showReplay,
         ) { viewModel.closeDetail() }
-        BackHandler(enabled = selectedMoodGenre != null && detail == null && !showSettings && !showReplay) {
-            viewModel.closeMoodGenre()
-        }
-        BackHandler(enabled = showDiscord) {
-            showDiscord = false
-        }
-        BackHandler(enabled = showAccountScrobbling && !showDiscord) {
-            showAccountScrobbling = false
-        }
-        BackHandler(enabled = showSources) {
-            showSources = false
-        }
-        // One back step out of Settings, or out of any tab but Home, lands on
-        // Home rather than exiting — only Home itself hands back to the system,
-        // which is what actually closes/minimizes the app.
-        BackHandler(enabled = showSettings && !showAccountScrobbling && !showSources) {
+        // One back step out of Settings lands on Songs rather than exiting
+        BackHandler(enabled = showSettings) {
             showSettings = false
-            // Only when Settings was the whole of what was on screen. Opened
-            // over Replay or over a release page, closing it reveals that again
-            // rather than throwing both away.
-            if (detail == null && !showReplay) selectedTab = TAB_HOME
+            if (detail == null && !showReplay) selectedTab = TAB_SONGS
         }
         BackHandler(
-            enabled = detail == null && !showSettings && !showAccountScrobbling &&
-                !showSources && !showReplay && selectedMoodGenre == null && selectedTab != TAB_HOME,
+            enabled = detail == null && !showSettings && !showReplay && selectedTab != TAB_SONGS,
         ) {
-            selectedTab = TAB_HOME
+            selectedTab = TAB_SONGS
         }
         BackHandler(enabled = showListenBrainzLogin) { showListenBrainzLogin = false }
         BackHandler(enabled = showLastfmLogin) { showLastfmLogin = false }
-        BackHandler(enabled = discordDialog != null) { discordDialog = null }
-        BackHandler(enabled = editingSource != null) { editingSource = null }
-        BackHandler(enabled = showHistory) { showHistory = false }
-        // Disabled while a detail page is open over the grid: that one's own
-        // BackHandler below has to close first, or back would skip past it
-        // straight to Library. See [onLibraryItemClick].
-        BackHandler(enabled = libraryShowAll != null && detail == null) { libraryShowAll = null }
 
         // On a tablet the page and the player stand side by side rather than
         // one over the other: everything a phone stacks in a single column —
@@ -1657,51 +1523,14 @@ private fun BitChordApp(
             Box(Modifier.weight(1f).fillMaxHeight()) {
                 AnimatedContent(
                     targetState = when {
-                        showDiscord -> "discord"
-                        showHistory -> "history"
-                        // `&& detail == null`: a card opened from the grid
-                        // stacks a detail page over it exactly as one opened
-                        // from the Library tab does — see
-                        // [onLibraryItemClick] — so with both set this must
-                        // give way to the `detail != null` branch below it
-                        // rather than keep showing the grid underneath.
-                        libraryShowAll != null && detail == null -> "library_show_all"
-                        showAccountScrobbling -> "account_scrobbling"
-                        showSources -> "sources"
-                        // Above Replay, not below it. The top bar's account
-                        // button sets `showSettings` from every page including
-                        // this one, so with Replay winning the tie the button
-                        // was live, hit, and changed nothing on screen.
                         showSettings -> "settings"
                         showReplay -> "replay"
                         detail != null -> detail.browseId
                         else -> "$TAB_KEY$selectedTab"
                     },
-                    // Tabs swap outright; everything else crossfades.
-                    //
-                    // A tab is not a place you travel to — the bar is the whole
-                    // navigation and it carries its own movement — so a fade
-                    // between two of them only ever reads as a stutter. And it
-                    // cannot read as anything else: neither page paints a
-                    // background, so a crossfade dissolves both through to the
-                    // window and the switch dips through a dimmer frame in the
-                    // middle. Pushing a page or raising Settings is a real
-                    // change of context and keeps the fade.
-                    //
-                    // "Show all" swapping with the Library tab underneath it is
-                    // the same case as a tab swap, not a pushed page: it's still
-                    // that tab, just laid out as a grid instead of a row, sharing
-                    // its background rather than painting its own — so this one
-                    // pair gets the tab's no-fade swap too, in both directions, or
-                    // the dip through a dim frame shows up on every hold of a
-                    // card there. A card opened *from* the grid is a real page
-                    // and keeps the fade, same as one opened from the row.
                     transitionSpec = {
                         val tabSwap = initialState.startsWith(TAB_KEY) && targetState.startsWith(TAB_KEY)
-                        val libraryTabKey = "$TAB_KEY$TAB_LIBRARY"
-                        val libraryShowAllSwap = (initialState == "library_show_all" && targetState == libraryTabKey) ||
-                            (targetState == "library_show_all" && initialState == libraryTabKey)
-                        if (tabSwap || libraryShowAllSwap) {
+                        if (tabSwap) {
                             EnterTransition.None togetherWith ExitTransition.None
                         } else {
                             fadeIn(tween(180)) togetherWith fadeOut(tween(180))
@@ -1712,10 +1541,6 @@ private fun BitChordApp(
                         .then(
                             if (glassActive) {
                                 Modifier
-                                    // Not under "reduce dynamic blur": nothing
-                                    // samples the layer then, and recording a
-                                    // whole page into one for no reader is the
-                                    // cost that setting exists to remove.
                                     .then(
                                         if (glassSamplesBackdrop) {
                                             Modifier.layerBackdrop(appBackdrop)
@@ -1723,9 +1548,6 @@ private fun BitChordApp(
                                             Modifier
                                         },
                                     )
-                                    // Every page's scroll passes through here, so
-                                    // the glass bar collapses on all of them
-                                    // without each one having to know about it.
                                     .nestedScroll(navBarScroll)
                             } else {
                                 Modifier
@@ -1733,16 +1555,8 @@ private fun BitChordApp(
                         ),
                     label = "content",
                 ) { key ->
-                    // Every branch below reads `key` rather than the state that
-                    // produced it. The two are the same thing only for the page
-                    // being entered: the one on its way out is still composed,
-                    // and asking it what is selected *now* has it redraw itself
-                    // as its own replacement — which then fades out from under
-                    // the identical copy fading in behind it.
                     val live = detailStack.lastOrNull()?.takeIf {
-                        it.browseId == key && key != "settings" && key != "account_scrobbling" &&
-                            key != "discord" && key != "replay" && key != "history" &&
-                            key != "library_show_all"
+                        it.browseId == key && key != "settings" && key != "replay"
                     }
                     // Held for the same reason, one step further on: a popped
                     // page is off the stack before it has finished animating
@@ -1752,43 +1566,12 @@ private fun BitChordApp(
                     val held = remember(key) { mutableStateOf(live) }
                     if (live != null) held.value = live
                     val page = held.value
-                    if (key == "history") {
-                        HistoryScreen(
-                            state = historyState,
-                            listState = historyListState,
-                            onSongClick = play,
-                            onSongLongPress = { songActions = it },
-                            onSongSwipe = onSongSwipe,
-                            onRetry = viewModel::loadHistory,
-                            contentPadding = listPadding,
-                        )
-                    } else if (key == "library_show_all") {
-                        libraryShowAll?.let { shelf ->
-                            LibraryGridPage(
-                                shelf = shelf,
-                                gridState = libraryShowAllGridState,
-                                onItemClick = onLibraryItemClick,
-                                onItemLongPress = onBrowseLongPress,
-                                // Only the Playlists shelf can grow one — see
-                                // [PlaylistShelf].
-                                onNewPlaylist = if (shelf.title == YtMusicRepository.PLAYLISTS_SHELF) {
-                                    { creatingPlaylist = true }
-                                } else {
-                                    null
-                                },
-                                contentPadding = listPadding,
-                            )
-                        }
-                    } else if (key == "replay") {
+                    if (key == "replay") {
                         ReplayScreen(
                             state = replay,
-                            holder = account?.name.orEmpty(),
+                            holder = "",
                             onPeriodChange = setReplayPeriod,
                             onOpenStory = { replayStory = it },
-                            // A track tapped on a chart is one the user already
-                            // knows they like, so it starts a station off itself
-                            // rather than queueing the chart it was on — the
-                            // same reading [playRadio] makes of a search hit.
                             onPlaySong = playRadio,
                             onOpenArtist = { id, name ->
                                 showReplay = false
@@ -1804,40 +1587,6 @@ private fun BitChordApp(
                             },
                             contentPadding = listPadding,
                             listState = replayListState,
-                        )
-                    } else if (key == "discord") {
-                        DiscordScreen(
-                            song = player.song,
-                            positionMs = player.position.positionMs,
-                            durationMs = player.durationMs,
-                            onOpenLogin = { showDiscordLogin = true },
-                            onOpenDialog = { discordDialog = it },
-                            contentPadding = listPadding,
-                        )
-                    } else if (key == "account_scrobbling") {
-                        AccountAndScrobblingScreen(
-                            signedIn = signedIn,
-                            account = account,
-                            channelName = selectedChannelName,
-                            onSignIn = {
-                                showAccountScrobbling = false
-                                showSettings = false
-                                webSession = WebSessionMode.SIGN_IN
-                            },
-                            onSwitchChannel = {
-                                viewModel.loadChannels()
-                                showAccountSelector = true
-                            },
-                            onSignOut = { viewModel.signOut() },
-                            onOpenListenBrainzLogin = { showListenBrainzLogin = true },
-                            onOpenLastfmLogin = { showLastfmLogin = true },
-                            onOpenDiscord = { showDiscord = true },
-                            contentPadding = listPadding,
-                        )
-                    } else if (key == "sources") {
-                        SourcesScreen(
-                            contentPadding = listPadding,
-                            onEditSource = { editingSource = it },
                         )
                     } else if (key == "settings") {
                         SettingsScreen(
@@ -2222,8 +1971,7 @@ private fun BitChordApp(
 
                 // Every top bar is a fade rather than a pane — see [TopFadeBlur].
                 // Drawn before the bar so the bar's own content sits on top of it.
-                val isDetailVisible = detail != null && !isLocalDetail && !showSettings &&
-                    !showAccountScrobbling && !showSources && !showReplay
+                val isDetailVisible = detail != null && !isLocalDetail && !showSettings && !showReplay
                 TopFadeBlur(
                     hazeState = hazeState,
                     // Replay paints its own full-bleed black backdrop up under the
@@ -2243,109 +1991,29 @@ private fun BitChordApp(
 
                 FrostedTopBar(
                     title = when {
-                        showDiscord -> "Discord"
-                        showHistory -> stringResource(R.string.history)
-                        libraryShowAll != null && detail == null -> libraryShowAll?.title.orEmpty()
-                        showAccountScrobbling -> stringResource(R.string.account_scrobbling)
-                        showSources -> stringResource(R.string.sources)
                         showSettings -> stringResource(R.string.settings)
                         showReplay -> stringResource(R.string.replay)
                         detail != null -> detail.title
-                        selectedMoodGenre != null -> selectedMoodGenre?.title.orEmpty()
-                        else -> tabs[selectedTab].let {
-                            if (it.label == "Play") stringResource(R.string.listen_now) else it.label
-                        }
+                        else -> tabs[selectedTab].label
                     },
-                    // Search has no large in-list header to hand the title back to —
-                    // the field takes that space — so its bar title is always up.
                     scrolled = when {
-                        showSettings || showAccountScrobbling || showSources || showDiscord || showHistory ||
-                            (libraryShowAll != null && detail == null) || selectedMoodGenre != null -> true
-                        // The page leads with its own large "Replay", so the bar
-                        // stays out of the way until that has been scrolled off.
+                        showSettings -> true
                         showReplay -> replayScrolled
                         detail != null -> detailScrolled
                         else -> scrolled || selectedTab == TAB_SEARCH
                     },
-                    refreshing = currentFeed != null && currentFeed in refreshing,
-                    pullFraction = { currentPull?.distanceFraction ?: 0f },
+                    refreshing = false,
+                    pullFraction = { 0f },
                     onBack = when {
-                        showDiscord -> ({ showDiscord = false })
-                        showHistory -> ({ showHistory = false })
-                        libraryShowAll != null && detail == null -> ({ libraryShowAll = null })
-                        showAccountScrobbling -> ({ showAccountScrobbling = false })
-                        showSources -> ({ showSources = false })
                         showSettings -> ({ showSettings = false })
                         showReplay -> ({ showReplay = false })
                         detail != null -> ({ viewModel.closeDetail(); Unit })
-                        selectedMoodGenre != null -> ({ viewModel.closeMoodGenre(); Unit })
                         else -> null
                     },
                     modifier = Modifier.align(Alignment.TopCenter),
                     actions = {
-                        if (!showSettings && !showAccountScrobbling) {
-                            // Left of the account photo, and only on Library itself:
-                            // a history is a record of what was played, which reads
-                            // as that tab's business rather than every tab's.
-                            if (!showHistory && !showReplay && !showDiscord && libraryShowAll == null &&
-                                detail == null && selectedTab == TAB_LIBRARY
-                            ) {
-                                IconButton(
-                                    onClick = {
-                                        showHistory = true
-                                        viewModel.loadHistory()
-                                    },
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.History,
-                                        contentDescription = stringResource(R.string.listening_history),
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                }
-                            }
-                            // Left of the account photo, and only on a Library
-                            // "Show all" grid — the same control the Downloads
-                            // folder offers (see `LocalSearchField`), adapted to
-                            // the one thing a playlist or album card carries: a
-                            // title.
-                            if (libraryShowAll != null && detail == null) {
-                                Box {
-                                    IconButton(onClick = { librarySortMenuOpen = true }) {
-                                        Icon(
-                                            Icons.Rounded.Sort,
-                                            contentDescription = stringResource(R.string.sort_library),
-                                            tint = MaterialTheme.colorScheme.onSurface,
-                                        )
-                                    }
-                                    DropdownMenu(
-                                        expanded = librarySortMenuOpen,
-                                        onDismissRequest = { librarySortMenuOpen = false },
-                                    ) {
-                                        LibrarySort.entries.forEach { option ->
-                                            DropdownMenuItem(
-                                                text = { Text(option.localizedLabel()) },
-                                                trailingIcon = if (option == librarySort) {
-                                                    { Icon(Icons.Rounded.Check, contentDescription = null) }
-                                                } else null,
-                                                onClick = {
-                                                    AppSettings.setLibrarySort(option)
-                                                    librarySortMenuOpen = false
-                                                },
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            // Left of the account photo, and only on an album or
-                            // playlist page — an artist page has no single track
-                            // list to reorder, and the device folders already
-                            // carry this same control themselves (see
-                            // `LocalSearchField`).
+                        if (!showSettings) {
                             if (detail != null && !isLocalDetail && detail.type != BrowseType.ARTIST) {
-                                // The menu itself is [FrostedSortMenu], composed
-                                // with the app's other frosted overlays further
-                                // down — in the main hierarchy, where the haze
-                                // can see the content it blurs.
                                 IconButton(onClick = { songSortMenuOpen = true }) {
                                     Icon(
                                         Icons.Rounded.Sort,
@@ -2377,8 +2045,6 @@ private fun BitChordApp(
 
                 // One tab handler, whichever bar is drawing it.
                 val onTabSelected: (Int) -> Unit = { index ->
-                    // Re-tapping the search tab while already on it focuses the
-                    // input field and opens the keyboard rather than resetting.
                     if (index == TAB_SEARCH && selectedTab == TAB_SEARCH) {
                         searchFocusTrigger++
                     } else {
@@ -2386,13 +2052,8 @@ private fun BitChordApp(
                             searchFocusTrigger = 0
                         }
                         viewModel.clearDetail()
-                        viewModel.closeMoodGenre()
                         showSettings = false
-                        showAccountScrobbling = false
-                        showSources = false
                         showReplay = false
-                        showHistory = false
-                        libraryShowAll = null
                         selectedTab = index
                     }
                 }
@@ -2524,7 +2185,7 @@ private fun BitChordApp(
                 ) {
                     ReplayShareSheet(
                         summary = summary,
-                        holder = account?.name.orEmpty(),
+                        holder = "",
                         memberSince = replay.memberSince,
                         page = replaySharePage,
                         onDismiss = { showReplayShare = false },
@@ -2924,85 +2585,6 @@ private fun BitChordApp(
             }
         }
 
-        // ---- Google sign-in (full screen WebView) ----
-        webSession?.let { mode ->
-            BackHandler { webSession = null }
-            // Raised by "Use this channel", read by the browser as "take the
-            // session from the page as it now stands". A counter rather than a
-            // flag so a second tap, after a failed first one, is still a new
-            // request rather than a value that was already true.
-            var captureRequest by remember(mode) { mutableIntStateOf(0) }
-            var captureFailed by remember(mode) { mutableStateOf(false) }
-            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                Column(Modifier.fillMaxSize()) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = { webSession = null }) {
-                            Icon(
-                                Icons.Rounded.Close,
-                                contentDescription = stringResource(R.string.close),
-                                tint = MaterialTheme.colorScheme.onBackground,
-                            )
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = when (mode) {
-                                    WebSessionMode.SIGN_IN -> stringResource(R.string.sign_in_youtube_music)
-                                    WebSessionMode.SWITCH_CHANNEL -> stringResource(R.string.choose_profile)
-                                },
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
-                            if (mode == WebSessionMode.SWITCH_CHANNEL) {
-                                Text(
-                                    text = if (captureFailed) {
-                                         stringResource(R.string.profile_unavailable)
-                                     } else {
-                                         stringResource(R.string.switch_profile_hint)
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 2,
-                                )
-                            }
-                        }
-                        if (mode == WebSessionMode.SWITCH_CHANNEL) {
-                            TextButton(onClick = {
-                                captureFailed = false
-                                captureRequest++
-                            }) {
-                                Text(stringResource(R.string.use_this_profile))
-                            }
-                        }
-                    }
-                    YtMusicLoginScreen(
-                        mode = mode,
-                        captureRequest = captureRequest,
-                        onCaptureUnavailable = { captureFailed = true },
-                        onCaptured = { session ->
-                            viewModel.onWebSession(session, mode)
-                            webSession = null
-                            if (mode == WebSessionMode.SIGN_IN) selectedTab = 2
-                        },
-                    )
-                }
-            }
-        }
-
-
-        if (showLyricsSources) {
-            BackHandler { showLyricsSources = false }
-            LyricsSourcesDialog(
-                hazeState = hazeState,
-                onDismiss = { showLyricsSources = false },
-            )
-        }
-
         if (songSortMenuOpen) {
             BackHandler { songSortMenuOpen = false }
             FrostedSortMenu(
@@ -3012,10 +2594,6 @@ private fun BitChordApp(
                     detail?.browseId?.let { AppSettings.setDetailSongSort(it, option) }
                     songSortMenuOpen = false
                 },
-                // Flipping the date direction deliberately leaves the menu up:
-                // closing it here would cut the arrow's rotation animation off
-                // before it played, and the open menu lets the direction flip
-                // read against the list reordering behind the frost.
                 onFlipDateDirection = {
                     detail?.browseId?.let { browseId ->
                         val next = when (songSort) {
@@ -3027,30 +2605,6 @@ private fun BitChordApp(
                     }
                 },
                 onDismiss = { songSortMenuOpen = false },
-            )
-        }
-
-        if (showAccountSelector) {
-            BackHandler { showAccountSelector = false }
-            AccountProfileSelector(
-                accounts = googleAccounts,
-                activeAccountId = activeAccountId,
-                activeProfileId = activeProfileId,
-                hazeState = hazeState,
-                onSelect = { selected, profile -> viewModel.selectProfile(selected.accountId, profile.profileId) },
-                onAddAccount = {
-                    showAccountSelector = false
-                    webSession = WebSessionMode.SIGN_IN
-                },
-                onRemoveAccount = { selected ->
-                    viewModel.removeAccount(selected.accountId)
-                    showAccountSelector = false
-                },
-                onOpenSettings = {
-                    showAccountSelector = false
-                    showSettings = true
-                },
-                onDismiss = { showAccountSelector = false },
             )
         }
 
@@ -3119,82 +2673,11 @@ private fun BitChordApp(
             )
         }
 
-        // ---- Discord sign-in (full screen WebView) ----
-        if (showDiscordLogin) {
-            BackHandler { showDiscordLogin = false }
-            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                Column(Modifier.fillMaxSize()) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = { showDiscordLogin = false }) {
-                            Icon(
-                                Icons.Rounded.Close,
-                                contentDescription = stringResource(R.string.close),
-                                tint = MaterialTheme.colorScheme.onBackground,
-                            )
-                        }
-                        Text(
-                            "Sign in to Discord",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
-                    DiscordLoginScreen(
-                        onTokenCaptured = { token ->
-                            AppSettings.setDiscordToken(token)
-                            showDiscordLogin = false
-                        },
-                    )
-                }
-            }
-        }
-
-        if (showSpotifyCanvasAuth) {
-            BackHandler { showSpotifyCanvasAuth = false }
-            SpotifyCanvasAuthScreen(
-                onNavigateUp = { showSpotifyCanvasAuth = false }
-            )
-        }
-
-        discordDialog?.let { which ->
-            DiscordDialogHost(
-                which = which,
-                hazeState = hazeState,
-                onDismiss = { discordDialog = null },
-            )
-        }
-
-        editingSource?.let { config ->
-            SourceEditorAlert(
-                hazeState = hazeState,
-                config = config,
-                onDismiss = { editingSource = null },
-                onSaved = { editingSource = null },
-                onDelete = {
-                    SourceRegistry.remove(config.id)
-                    editingSource = null
-                },
-                scope = scope,
-            )
-        }
-
     }
 }
 
 private fun tween(durationMillis: Int) =
     androidx.compose.animation.core.tween<Float>(durationMillis)
-
-@Composable
-private fun LibrarySort.localizedLabel(): String = when (this) {
-    LibrarySort.DEFAULT -> stringResource(R.string.sort_default)
-    LibrarySort.TITLE_ASC -> stringResource(R.string.sort_title_ascending)
-    LibrarySort.TITLE_DESC -> stringResource(R.string.sort_title_descending)
-}
 
 /**
  * The track-list sort menu, styled after the account switcher: a full-screen
@@ -3441,9 +2924,7 @@ private const val TAB_ARTISTS = 2
 private const val TAB_FOLDERS = 3
 private const val TAB_SEARCH = 4
 
-private const val TAB_HOME = TAB_SONGS
-private const val TAB_EXPLORE = TAB_ALBUMS
-private const val TAB_LIBRARY = TAB_FOLDERS
+
 
 /**
  * What a tab's key is prefixed with in the content switcher above.
