@@ -49,6 +49,7 @@ import com.music.bitchord.feature.lyricseditor.ui.components.LyricsDownloadDialo
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsEditorBottomBar
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsEditorHeader
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsEditorTopBar
+import com.music.bitchord.feature.lyricseditor.ui.components.LyricsSearchResultsDialog
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsSelectorDialog
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsSourcePillSelector
 import com.music.bitchord.feature.lyricseditor.ui.viewmodel.LyricsEditorViewModel
@@ -71,8 +72,11 @@ fun LyricsEditorScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
     val candidateResult by viewModel.candidateResult.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val isSearchingResults by viewModel.isSearchingResults.collectAsState()
 
     var showDownloadDialog by remember { mutableStateOf(false) }
+    var showSearchResultsDialog by remember { mutableStateOf(false) }
     var textFieldValue by remember { mutableStateOf(TextFieldValue(currentText)) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -253,10 +257,35 @@ fun LyricsEditorScreen(
         LyricsDownloadDialog(
             initialTitle = song.title,
             initialArtist = song.artist,
+            initialAlbum = song.albumName,
             onDismissRequest = { showDownloadDialog = false },
-            onDownloadClick = { title, artist ->
+            onAutoDownloadClick = { title, artist, album ->
                 showDownloadDialog = false
-                viewModel.downloadLyrics(title, artist)
+                viewModel.autoDownload(title, artist, album)
+            },
+            onSearchAllClick = { title, artist, album, providers ->
+                showDownloadDialog = false
+                showSearchResultsDialog = true
+                viewModel.searchAllProviders(title, artist, album, providers)
+            },
+        )
+    }
+
+    if (showSearchResultsDialog) {
+        LyricsSearchResultsDialog(
+            results = searchResults,
+            isSearching = isSearchingResults,
+            onDismissRequest = {
+                showSearchResultsDialog = false
+                viewModel.clearSearchResults()
+            },
+            onResultSelected = { item ->
+                showSearchResultsDialog = false
+                viewModel.applySearchResult(item)
+            },
+            onRefineSearchClick = {
+                showSearchResultsDialog = false
+                showDownloadDialog = true
             },
         )
     }

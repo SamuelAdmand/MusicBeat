@@ -3,9 +3,11 @@ package com.music.bitchord.feature.lyricseditor.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.feature.lyricseditor.data.LocalLyricsManager
 import com.music.bitchord.feature.lyricseditor.domain.model.LyricsEditorSource
+import com.music.bitchord.feature.lyricseditor.domain.model.LyricsSearchResultItem
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsSelectionMode
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +33,12 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _candidateResult = MutableStateFlow<LocalLyricsManager.DownloadedLyricsResult?>(null)
     val candidateResult: StateFlow<LocalLyricsManager.DownloadedLyricsResult?> = _candidateResult.asStateFlow()
+
+    private val _searchResults = MutableStateFlow<List<LyricsSearchResultItem>>(emptyList())
+    val searchResults: StateFlow<List<LyricsSearchResultItem>> = _searchResults.asStateFlow()
+
+    private val _isSearchingResults = MutableStateFlow(false)
+    val isSearchingResults: StateFlow<Boolean> = _isSearchingResults.asStateFlow()
 
     private val _saveResult = MutableSharedFlow<Boolean>()
     val saveResult: SharedFlow<Boolean> = _saveResult.asSharedFlow()
@@ -78,12 +86,13 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
         editedLyricsMap[_selectedSource.value] = original
     }
 
-    fun downloadLyrics(title: String, artist: String) {
+    fun autoDownload(title: String, artist: String, album: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
             val result = LocalLyricsManager.downloadFromLrcLib(
                 title = title,
                 artist = artist,
+                album = album,
             )
             _isLoading.value = false
 
@@ -99,6 +108,54 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
                 _toastMessage.emit("No lyrics found online")
             }
         }
+    }
+
+    fun searchAllProviders(
+        title: String,
+        artist: String,
+        album: String? = null,
+        providers: Set<LyricsSource>,
+    ) {
+        viewModelScope.launch {
+            _isSearchingResults.value = true
+            val items = LocalLyricsManager.searchAllProviders(
+                title = title,
+                artist = artist,
+                album = album,
+                providers = providers,
+            )
+            _searchResults.value = items
+            _isSearchingResults.value = false
+        }
+    }
+
+    fun clearSearchResults() {
+        _searchResults.value = emptyList()
+        _isSearchingResults.value = false
+    }
+
+    fun applySearchResult(item: LyricsSearchResultItem) {
+        if (item.hasSynced && item.hasPlain) {
+            _candidateResult.value = LocalLyricsManager.DownloadedLyricsResult(
+                plain = item.plainLyrics,
+                synced = item.syncedLyrics,
+            )
+        } else if (item.hasSynced) {
+            updateText(item.syncedLyrics!!)
+            viewModelScope.launch {
+                _toastMessage.emit("Loaded synced lyrics from ${item.provider}")
+            }
+        } else if (item.hasPlain) {
+            updateText(item.plainLyrics!!)
+            viewModelScope.launch {
+                _toastMessage.emit("Loaded plain lyrics from ${item.provider}")
+            }
+        }
+        clearSearchResults()
+    }
+
+    fun downloadLyrics(title: String, artist: String) {
+        autoDownload(title, artist)
     }
 
     fun applyCandidateSelection(mode: LyricsSelectionMode) {
