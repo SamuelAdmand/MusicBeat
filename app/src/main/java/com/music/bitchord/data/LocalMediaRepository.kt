@@ -3,12 +3,15 @@ package com.music.bitchord.data
 import android.Manifest
 import android.content.ContentUris
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
+import android.provider.Settings
 import com.music.bitchord.data.DebugLog as Log
 import androidx.core.content.ContextCompat
 import com.music.bitchord.data.model.Song
@@ -34,17 +37,49 @@ object LocalMediaRepository {
         "/alarms/",
         "/notifications/",
         "/ringtones/",
-        "/podcasts/",
-        "/audiobooks/",
-        "/recordings/",
+        "/ui/",
+        "/call_recordings/",
         "/voice recorder/",
         "/sound_recorder/",
         "/call_rec/",
         "/whatsapp voice notes/",
     )
 
+    /**
+     * Checks if the app has All Files Access (MANAGE_EXTERNAL_STORAGE).
+     * On Android 11+ (API 30+), this allows tag editing and lyrics embedding without system prompts.
+     */
+    fun hasAllFilesPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            true
+        }
+    }
+
+    /**
+     * Opens system settings for the user to grant All Files Access to BitChord.
+     */
+    fun requestAllFilesAccess(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            }.onFailure {
+                val fallback = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallback)
+            }
+        }
+    }
+
     /** Check if storage/audio permission is granted to query device local music. */
     fun hasStoragePermission(context: Context): Boolean {
+        if (hasAllFilesPermission()) return true
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(
                 context,

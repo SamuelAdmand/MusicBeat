@@ -35,7 +35,9 @@ import androidx.compose.material.icons.rounded.BlurOff
 import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Brightness4
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.FolderSpecial
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Dns
@@ -164,6 +166,7 @@ fun SettingsScreen(
     val fullBleedArtwork by AppSettings.fullBleedArtwork.collectAsStateWithLifecycle()
     val legacyMeshGradient by AppSettings.legacyMeshGradient.collectAsStateWithLifecycle()
     val syncedLyrics by AppSettings.syncedLyrics.collectAsStateWithLifecycle()
+    val autoEmbedLyrics by AppSettings.autoEmbedLyrics.collectAsStateWithLifecycle()
     val lyricsSources by AppSettings.lyricsSources.collectAsStateWithLifecycle()
     val showLyricsLogs by AppSettings.showLyricsLogs.collectAsStateWithLifecycle()
     val theme by AppSettings.themeMode.collectAsStateWithLifecycle()
@@ -562,6 +565,23 @@ fun SettingsScreen(
                 )
                 RowDivider()
                 SettingsRow(
+                    icon = Icons.Rounded.FileDownload,
+                    title = "Auto-embed lyrics into audio files",
+                    subtitle = "Automatically writes online lyrics into local music files when played",
+                    trailing = {
+                        Switch(
+                            checked = autoEmbedLyrics,
+                            onCheckedChange = AppSettings::setAutoEmbedLyrics,
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                checkedBorderColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        )
+                    },
+                    onClick = { AppSettings.setAutoEmbedLyrics(!autoEmbedLyrics) },
+                )
+                RowDivider()
+                SettingsRow(
                     icon = Icons.Rounded.Language,
                     title = stringResource(R.string.lyrics_sources),
                     subtitle = lyricsSources
@@ -637,6 +657,33 @@ fun SettingsScreen(
                     ?: stringResource(R.string.all_audio_folders),
                 onClick = { localMusicFolderPicker.launch(null) },
             )
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                RowDivider()
+                val hasAllFiles = LocalMediaRepository.hasAllFilesPermission()
+                SettingsRow(
+                    icon = Icons.Rounded.FolderSpecial,
+                    title = "All files access",
+                    subtitle = if (hasAllFiles) {
+                        "Granted — tags and lyrics are edited directly without prompts"
+                    } else {
+                        "Grant access to edit tags and embed lyrics without system prompts"
+                    },
+                    trailing = {
+                        if (hasAllFiles) {
+                            Icon(
+                                Icons.Rounded.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        } else {
+                            Chevron()
+                        }
+                    },
+                    onClick = {
+                        LocalMediaRepository.requestAllFilesAccess(context)
+                    },
+                )
+            }
             if (localMusicFolderUri.isNotBlank()) {
                 RowDivider()
                 SettingsRow(

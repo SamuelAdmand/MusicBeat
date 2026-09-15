@@ -442,6 +442,9 @@ object AppSettings {
     /** When enabled, shows lyrics fetching and Genius scraping logs in the lyrics menu/panel. */
     val showLyricsLogs = MutableStateFlow(false)
 
+    /** When enabled, automatically writes online lyrics into local music files when played. */
+    val autoEmbedLyrics = MutableStateFlow(true)
+
     /** Disk budget for cached audio. [AudioCache][com.music.bitchord.playback.AudioCache] evicts past it. */
     val audioCacheLimitBytes = MutableStateFlow(DEFAULT_CACHE_LIMIT_BYTES)
 
@@ -695,6 +698,7 @@ object AppSettings {
         lyricsSourceOrder.value = readLyricsSourceOrder()
         prioritizeSyllableSync.value = prefs.getBoolean(KEY_PRIORITIZE_SYLLABLE_SYNC, false)
         showLyricsLogs.value = prefs.getBoolean(KEY_SHOW_LYRICS_LOGS, false)
+        autoEmbedLyrics.value = prefs.getBoolean(KEY_AUTO_EMBED_LYRICS, true)
         audioCacheLimitBytes.value = prefs.getLong(KEY_CACHE_LIMIT, DEFAULT_CACHE_LIMIT_BYTES)
             .coerceIn(DEFAULT_CACHE_LIMIT_BYTES, MAX_CACHE_LIMIT_BYTES)
         lastfmEnabled.value = prefs.getBoolean(KEY_LASTFM_ENABLED, false)
@@ -1037,6 +1041,11 @@ object AppSettings {
     fun setShowLyricsLogs(value: Boolean) {
         showLyricsLogs.value = value
         prefs.edit().putBoolean(KEY_SHOW_LYRICS_LOGS, value).apply()
+    }
+
+    fun setAutoEmbedLyrics(value: Boolean) {
+        autoEmbedLyrics.value = value
+        prefs.edit().putBoolean(KEY_AUTO_EMBED_LYRICS, value).apply()
     }
 
     /**
@@ -1501,6 +1510,7 @@ object AppSettings {
     private const val KEY_LYRICS_SOURCE_ORDER = "lyrics_source_order"
     private const val KEY_PRIORITIZE_SYLLABLE_SYNC = "prioritize_syllable_sync"
     private const val KEY_SHOW_LYRICS_LOGS = "show_lyrics_logs"
+    private const val KEY_AUTO_EMBED_LYRICS = "auto_embed_lyrics"
     private const val KEY_REPLAY_GENRES = "replay_genres"
     private const val KEY_FILTER_NON_MUSIC_AUDIO = "filter_non_music_audio"
     private const val KEY_LOCAL_MUSIC_SORT = "local_music_sort"

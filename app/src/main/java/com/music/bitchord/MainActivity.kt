@@ -545,6 +545,7 @@ private fun BitChordApp(
                 player.durationMs,
                 it.albumName,
                 it.localUri,
+                song = it,
             )
         }
     }

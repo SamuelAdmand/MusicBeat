@@ -17,6 +17,9 @@ import com.music.bitchord.data.lyrics.EmbeddedLyrics
 import com.music.bitchord.data.lyrics.LyricLine
 import com.music.bitchord.data.lyrics.LyricsRepository
 import com.music.bitchord.data.lyrics.LyricsSource
+import com.music.bitchord.data.lyrics.toLrc
+import com.music.bitchord.feature.lyricseditor.data.LocalLyricsManager
+import kotlinx.coroutines.Dispatchers
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.innertube.Innertube
 import com.music.bitchord.data.innertube.PlaybackTracker
@@ -258,6 +261,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         durationMs: Long,
         album: String? = null,
         localUri: String? = null,
+        song: Song? = null,
     ) {
         val sources = if (AppSettings.syncedLyrics.value) {
             AppSettings.lyricsSources.value
@@ -283,8 +287,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             // only needed to *match* a track against a stranger's database, and
             // nothing is being matched here — these lyrics were written into
             // this exact file, for this exact recording.
-            if (localUri != null) {
-                EmbeddedLyrics.forUri(getApplication(), localUri)?.let { embedded ->
+            val targetUri = localUri ?: song?.localUri
+            if (targetUri != null) {
+                EmbeddedLyrics.forUri(getApplication(), targetUri)?.let { embedded ->
                     _lyrics.value = embedded
                     // No source to name: what the file records is the lyrics,
                     // not which of the eight services they came from months ago.
@@ -305,6 +310,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _lyrics.value = found?.lines
             _lyricsSource.value = found?.source
             _lyricsChecked.value = true
+
+            // Automatically embed online lyrics into the local music file in the background
+            if (found != null && found.lines.isNotEmpty() && AppSettings.autoEmbedLyrics.value) {
+                val effectiveUri = localUri ?: song?.localUri
+                val effectivePath = song?.localPath
+                if (effectiveUri != null || !effectivePath.isNullOrBlank()) {
+                    val targetSong = song ?: Song(
+                        videoId = videoId,
+                        title = title,
+                        artist = artist,
+                        albumName = album,
+                        thumbnailUrl = null,
+                        localUri = effectiveUri,
+                        localPath = effectivePath,
+                    )
+                    val lrcText = found.lines.toLrc()
+                    viewModelScope.launch(Dispatchers.IO) {
+                        LocalLyricsManager.autoEmbedLyrics(getApplication(), targetSong, lrcText)
+                    }
+                }
+            }
         }
     }
 

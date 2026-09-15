@@ -64,6 +64,8 @@ import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.data.lyrics.EmbeddedLyrics
 import com.music.bitchord.data.lyrics.LyricLine
 import com.music.bitchord.data.lyrics.LyricsRepository
+import com.music.bitchord.data.lyrics.toLrc
+import com.music.bitchord.feature.lyricseditor.data.LocalLyricsManager
 import com.music.bitchord.data.model.NOTIFICATION_ART_PX
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
@@ -4299,6 +4301,10 @@ class PlaybackService : MediaLibraryService() {
                     prioritizeSyllableSync = AppSettings.prioritizeSyllableSync.value,
                 )
                 lines = found?.lines
+                if (!lines.isNullOrEmpty() && AppSettings.autoEmbedLyrics.value && (localUri != null || !currentSong.localPath.isNullOrBlank())) {
+                    val lrcText = lines.toLrc()
+                    LocalLyricsManager.autoEmbedLyrics(this@PlaybackService, currentSong, lrcText)
+                }
             }
             withContext(Dispatchers.Main) {
                 serviceLyrics = lines

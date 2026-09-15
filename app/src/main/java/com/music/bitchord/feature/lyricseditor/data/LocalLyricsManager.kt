@@ -74,6 +74,23 @@ object LocalLyricsManager {
         }
     }
 
+    /**
+     * Automatically writes online lyrics into a local music file's metadata tags without user prompts.
+     * If embedded tag saving fails, safely falls back to a companion .lrc file beside the track.
+     */
+    suspend fun autoEmbedLyrics(
+        context: Context,
+        song: Song,
+        lyricsText: String,
+    ): Boolean = withContext(Dispatchers.IO) {
+        if (lyricsText.isBlank()) return@withContext false
+        val embeddedOk = saveEmbeddedLyrics(context, song, lyricsText)
+        if (embeddedOk) {
+            return@withContext true
+        }
+        saveFileLyrics(context, song, lyricsText)
+    }
+
     suspend fun downloadFromLrcLib(
         title: String,
         artist: String,
