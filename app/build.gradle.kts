@@ -36,7 +36,7 @@ val lastfmSecret: String = (
 
 android {
     namespace = "com.music.bitchord"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.music.bitchord"
@@ -281,6 +281,9 @@ dependencies {
 
     // ---- JS module execution: QuickJS VM for style source plugins ----
     implementation("io.github.dokar3:quickjs-kt-android:1.0.5")
+
+    // ---- Audio tag & cover editing: Native TagLib ----
+    implementation("io.github.kyant0:taglib:1.0.6")
 
     // ---- Automix: on-device beat/downbeat model (Beat This!, MIT-licensed) ----
     // The full android artifact, not onnxruntime-mobile: mobile only loads .ort

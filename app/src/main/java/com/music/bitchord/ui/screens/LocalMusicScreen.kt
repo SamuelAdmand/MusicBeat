@@ -130,10 +130,12 @@ import com.music.bitchord.ui.components.topBarHeight
 import com.music.bitchord.feature.localsongactions.ui.LocalSongActionsHelper
 import com.music.bitchord.feature.localsongactions.ui.components.LocalAddToPlaylistSheet
 import com.music.bitchord.feature.localsongactions.ui.components.LocalDeleteConfirmDialog
-import com.music.bitchord.feature.localsongactions.ui.components.LocalLyricsEditorSheet
 import com.music.bitchord.feature.localsongactions.ui.components.LocalSongDetailsSheet
 import com.music.bitchord.feature.localsongactions.ui.components.LocalSongDropdownMenu
-import com.music.bitchord.feature.localsongactions.ui.components.LocalTagEditorSheet
+import com.music.bitchord.feature.lyricseditor.ui.LyricsEditorScreen
+import com.music.bitchord.feature.tageditor.ui.TagEditorScreen
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
 import com.music.bitchord.ui.icons.BitChordIcons
@@ -723,21 +725,37 @@ fun LocalMusicScreen(
     }
 
     tagEditorSong?.let { song ->
-        LocalTagEditorSheet(
-            song = song,
+        Dialog(
             onDismissRequest = { tagEditorSong = null },
-            onTagsSaved = {
-                tagEditorSong = null
-                onDeleteSong?.invoke(song)
-            },
-        )
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+            ),
+        ) {
+            TagEditorScreen(
+                song = song,
+                onNavigateBack = { tagEditorSong = null },
+                onTagsSaved = {
+                    tagEditorSong = null
+                    onDeleteSong?.invoke(song)
+                },
+            )
+        }
     }
 
     lyricsEditorSong?.let { song ->
-        LocalLyricsEditorSheet(
-            song = song,
+        Dialog(
             onDismissRequest = { lyricsEditorSong = null },
-        )
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+            ),
+        ) {
+            LyricsEditorScreen(
+                song = song,
+                onBackClick = { lyricsEditorSong = null },
+            )
+        }
     }
 
     deleteSong?.let { song ->

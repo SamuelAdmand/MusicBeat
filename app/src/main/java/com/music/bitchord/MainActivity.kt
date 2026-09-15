@@ -194,9 +194,11 @@ import com.music.bitchord.ui.player.NowPlayingScreen
 import com.music.bitchord.ui.player.dockedPlayerAvailable
 import com.music.bitchord.ui.player.dockedPlayerWidth
 import com.music.bitchord.data.settings.SongSort
-import com.music.bitchord.feature.localsongactions.ui.components.LocalLyricsEditorSheet
+import com.music.bitchord.feature.lyricseditor.ui.LyricsEditorScreen
 import com.music.bitchord.feature.localsongactions.ui.components.LocalSongDetailsSheet
-import com.music.bitchord.feature.localsongactions.ui.components.LocalTagEditorSheet
+import com.music.bitchord.feature.tageditor.ui.TagEditorScreen
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.music.bitchord.ui.screens.DetailScreen
 import com.music.bitchord.ui.screens.LocalMusicScreen
 import com.music.bitchord.ui.replay.ReplayScreen
@@ -2204,26 +2206,52 @@ private fun BitChordApp(
                 var showLyricsEditor by remember { mutableStateOf(false) }
 
                 if (showTagEditor) {
-                    LocalTagEditorSheet(
-                        song = song,
+                    Dialog(
                         onDismissRequest = {
                             showTagEditor = false
                             songActions = null
                         },
-                        onTagsSaved = {
-                            showTagEditor = false
-                            songActions = null
-                            viewModel.loadLocalMusic()
-                        },
-                    )
+                        properties = DialogProperties(
+                            usePlatformDefaultWidth = false,
+                            decorFitsSystemWindows = false,
+                        ),
+                    ) {
+                        TagEditorScreen(
+                            song = song,
+                            onNavigateBack = {
+                                showTagEditor = false
+                                songActions = null
+                            },
+                            onTagsSaved = {
+                                showTagEditor = false
+                                songActions = null
+                                viewModel.loadLocalMusic()
+                            },
+                        )
+                    }
                 } else if (showLyricsEditor) {
-                    LocalLyricsEditorSheet(
-                        song = song,
+                    Dialog(
                         onDismissRequest = {
                             showLyricsEditor = false
                             songActions = null
                         },
-                    )
+                        properties = DialogProperties(
+                            usePlatformDefaultWidth = false,
+                            decorFitsSystemWindows = false,
+                        ),
+                    ) {
+                        LyricsEditorScreen(
+                            song = song,
+                            onBackClick = {
+                                showLyricsEditor = false
+                                songActions = null
+                            },
+                            onLyricsSaved = {
+                                showLyricsEditor = false
+                                songActions = null
+                            },
+                        )
+                    }
                 } else {
                     LocalSongDetailsSheet(
                         song = song,
