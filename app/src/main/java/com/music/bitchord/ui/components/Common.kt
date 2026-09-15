@@ -296,6 +296,7 @@ fun SongRow(
     activeTint: Color = MaterialTheme.colorScheme.primary,
     /** True while a Downloads row belongs to the current multi-selection. */
     selected: Boolean = false,
+    dropdownMenu: (@Composable () -> Unit)? = null,
 ) {
     val haptics = rememberHaptics()
     val swipeStateHolder = remember { mutableStateOf<SwipeToDismissBoxState?>(null) }
@@ -331,6 +332,7 @@ fun SongRow(
             isPlaying = isPlaying,
             activeTint = activeTint,
             selected = selected,
+            dropdownMenu = dropdownMenu,
         )
         return
     }
@@ -377,6 +379,7 @@ fun SongRow(
             isPlaying = isPlaying,
             activeTint = activeTint,
             selected = selected,
+            dropdownMenu = dropdownMenu,
         )
     }
 }
@@ -443,6 +446,7 @@ private fun SongRowContent(
     isPlaying: Boolean = false,
     activeTint: Color = MaterialTheme.colorScheme.primary,
     selected: Boolean = false,
+    dropdownMenu: (@Composable () -> Unit)? = null,
 ) {
     val titleColor by animateColorAsState(
         targetValue = if (isCurrent) activeTint else MaterialTheme.colorScheme.onBackground,
@@ -539,12 +543,12 @@ private fun SongRowContent(
             )
         }
         // Same sheet the long-press opens, for anyone who doesn't think to hold.
-        if (onMore != null) {
+        if (onMore != null || dropdownMenu != null) {
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .clickable(onClick = onMore),
+                    .clickable { onMore?.invoke() },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -553,6 +557,7 @@ private fun SongRowContent(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp),
                 )
+                dropdownMenu?.invoke()
             }
         }
     }

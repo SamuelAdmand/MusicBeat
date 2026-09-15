@@ -11,6 +11,7 @@ import com.music.bitchord.auth.AuthStore
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.sources.SourceKind
 import kotlinx.coroutines.flow.MutableStateFlow
+import java.util.Locale
 
 /**
  * Stream bitrate ceiling on the YouTube fallback path — MEDIUM, HIGH and
@@ -132,8 +133,10 @@ enum class AutomixPerformanceMode(val inferenceThreads: Int) {
 enum class LocalMusicSort {
     TITLE_ASC,
     TITLE_DESC,
+    ARTIST_ASC,
     DATE_ADDED,
     DATE_MODIFIED,
+    DURATION_DESC,
 }
 
 /**
@@ -477,6 +480,9 @@ object AppSettings {
     /** Empty means every MediaStore folder; otherwise this is a persisted SAF tree URI. */
     val localMusicFolderUri = MutableStateFlow("")
 
+    /** Normalized paths of folders blacklisted/excluded from local music scanning. */
+    val blacklistedFolders = MutableStateFlow<Set<String>>(emptySet())
+
     /**
      * Browse ids of the playlists pinned to the top of the Library tab, in the
      * order they were pinned.
@@ -718,6 +724,7 @@ object AppSettings {
             ?: LibrarySort.DEFAULT
         detailSongSorts.value = readDetailSongSorts()
         localMusicFolderUri.value = prefs.getString(KEY_LOCAL_MUSIC_FOLDER_URI, "").orEmpty()
+        blacklistedFolders.value = prefs.getStringSet(KEY_BLACKLISTED_FOLDERS, emptySet()).orEmpty()
         pinnedPlaylists.value = readPinnedPlaylists()
         discordToken.value = authStore.discordToken.orEmpty()
         discordUsername.value = prefs.getString(KEY_DISCORD_USERNAME, "").orEmpty()
@@ -1291,6 +1298,23 @@ object AppSettings {
         prefs.edit().putString(KEY_LOCAL_MUSIC_FOLDER_URI, value).apply()
     }
 
+    fun setFolderBlacklisted(folderPath: String, blacklisted: Boolean) {
+        val normalized = folderPath.replace('\\', '/').trimEnd('/').lowercase(Locale.ROOT)
+        val current = blacklistedFolders.value
+        val updated = if (blacklisted) current + normalized else current - normalized
+        blacklistedFolders.value = updated
+        prefs.edit().putStringSet(KEY_BLACKLISTED_FOLDERS, updated).apply()
+    }
+
+    fun isFolderBlacklisted(folderPath: String?): Boolean {
+        if (folderPath.isNullOrBlank()) return false
+        val normalized = folderPath.replace('\\', '/').trimEnd('/').lowercase(Locale.ROOT)
+        val blacklisted = blacklistedFolders.value
+        return blacklisted.any { b ->
+            normalized == b || normalized.startsWith("$b/")
+        }
+    }
+
     private fun readLocalMusicSort(key: String): LocalMusicSort =
         prefs.getString(key, null)
             ?.let { saved -> LocalMusicSort.entries.firstOrNull { it.name == saved } }
@@ -1486,6 +1510,7 @@ object AppSettings {
     private const val KEY_LOCAL_MUSIC_VIEW_TYPE = "local_music_view_type"
     private const val KEY_DOWNLOADED_MUSIC_VIEW_TYPE = "downloaded_music_view_type"
     private const val KEY_LOCAL_MUSIC_FOLDER_URI = "local_music_folder_uri"
+    private const val KEY_BLACKLISTED_FOLDERS = "blacklisted_folders"
     private const val KEY_PINNED_PLAYLISTS = "pinned_playlists"
 
     private const val KEY_LASTFM_ENABLED = "lastfm_enabled"

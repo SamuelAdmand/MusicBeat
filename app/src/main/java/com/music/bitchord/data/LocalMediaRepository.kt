@@ -15,6 +15,7 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.download.DownloadStore
 import com.music.bitchord.download.Downloads
+import com.music.bitchord.feature.localmusic.domain.model.LocalFolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -268,6 +269,7 @@ object LocalMediaRepository {
 
                     if (filterNonMusic && !isEligibleLocalMusic(durationMs, displayName, path)) continue
                     if (!isInSelectedFolder(path, AppSettings.localMusicFolderUri.value)) continue
+                    if (AppSettings.isFolderBlacklisted(path?.substringBeforeLast('/'))) continue
 
                     val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString()
                     val title = rawTitle.cleanTag()?.removeAudioExtension()
@@ -297,6 +299,55 @@ object LocalMediaRepository {
         }.onFailure { Log.w(TAG, "Failed scanning device local music: ${it.message}") }
 
         songs
+    }
+
+    /**
+     * Discovers all physical storage folders containing playable music,
+     * along with their track counts and blacklist status.
+     */
+    suspend fun getAllDiscoveredFolders(context: Context): List<LocalFolder> = withContext(Dispatchers.IO) {
+        if (!hasStoragePermission(context)) return@withContext emptyList()
+        val counts = mutableMapOf<String, Int>()
+        val projection = arrayOf(
+            MediaStore.Audio.Media.DATA,
+            MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.DISPLAY_NAME,
+        )
+        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+
+        runCatching {
+            context.contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                null,
+                null,
+            )?.use { cursor ->
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+                val durCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+                while (cursor.moveToNext()) {
+                    val path = cursor.getString(dataCol) ?: continue
+                    val dur = cursor.getLong(durCol)
+                    val name = cursor.getString(nameCol).orEmpty()
+                    if (!isEligibleLocalMusic(dur, name, path)) continue
+                    val folderPath = path.substringBeforeLast('/')
+                    counts[folderPath] = (counts[folderPath] ?: 0) + 1
+                }
+            }
+        }.onFailure { Log.w(TAG, "Failed discovering local folders: ${it.message}") }
+
+        counts.map { (folderPath, count) ->
+            val name = folderPath.substringAfterLast('/').takeIf { it.isNotBlank() } ?: folderPath
+            val parent = folderPath.substringBeforeLast('/').takeIf { it.isNotBlank() && it != folderPath }
+            LocalFolder(
+                path = folderPath,
+                name = name,
+                parentPath = parent,
+                songCount = count,
+                isBlacklisted = AppSettings.isFolderBlacklisted(folderPath),
+            )
+        }.sortedWith(compareBy({ it.isBlacklisted }, { it.name.lowercase(Locale.ROOT) }))
     }
 
     /** Human-readable path for the folder setting without exposing provider internals. */

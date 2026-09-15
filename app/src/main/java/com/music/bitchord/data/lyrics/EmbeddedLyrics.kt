@@ -78,34 +78,56 @@ object EmbeddedLyrics {
         }
 
     /** The raw LRC text for the file, preferring this app's word-timed field. */
-    private fun read(context: Context, uri: Uri): String? =
-        sidecar(uri.path.takeIf { uri.scheme == "file" })
-            ?: open(context, uri)?.use { fromBytes(it.readAtMost(MAX_TAG_BYTES)) }
+    private fun read(context: Context, uri: Uri): String? {
+        val path = if (uri.scheme == "file") {
+            uri.path
+        } else {
+            resolveFilePath(context, uri)
+        }
+        return sidecar(path) ?: open(context, uri)?.use { fromBytes(it.readAtMost(MAX_TAG_BYTES)) }
+    }
+
+    private fun resolveFilePath(context: Context, uri: Uri): String? = runCatching {
+        if (uri.scheme == "file") return uri.path
+        if (uri.scheme != "content") return null
+        val proj = arrayOf(android.provider.MediaStore.Audio.Media.DATA)
+        context.contentResolver.query(uri, proj, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.DATA)
+                if (idx != -1) cursor.getString(idx) else null
+            } else null
+        }
+    }.getOrNull()
 
     /**
-     * The `lyrics.lrc` written next to the offline package playlist at [path].
-     *
-     * Recognised by the playlist rather than by the directory it sits in: the
-     * package lives under a path this module has no business knowing, and a
-     * local `.m3u8` is only ever one of these packages — nothing else in the
-     * app saves a playlist to disk. What the sidecar holds is the enhanced A2
-     * form where the download found one, which is why it is preferred over a
-     * container search rather than used as a fallback to it.
-     *
-     * Takes the path rather than the `Uri` it came out of so the pairing with
-     * the writers can be tested on a real directory, without a device.
+     * Finds sidecar lyrics: either `lyrics.lrc` beside an offline `.m3u8` package,
+     * or a companion `<song_name>.lrc` file in the same folder as the local audio file.
      */
     internal fun sidecar(path: String?): String? {
-        val playlist = path?.let(::File)?.takeIf { it.name.endsWith(".m3u8", ignoreCase = true) }
-            ?: return null
-        val file = File(playlist.parentFile ?: return null, "lyrics.lrc")
-        // Bounded for the same reason [MAX_TAG_BYTES] is: this is read into a
-        // string, and the size on disk is the only thing that says how big one.
-        if (!file.isFile || file.length() !in 1..MAX_TAG_BYTES.toLong()) return null
-        return runCatching { file.readText() }
-            .onFailure { Log.d(TAG, "could not read $file: ${it.message}") }
-            .getOrNull()
-            ?.takeIf { it.isNotBlank() }
+        if (path.isNullOrBlank()) return null
+        val target = File(path)
+        // 1. Offline package playlist with lyrics.lrc
+        if (target.name.endsWith(".m3u8", ignoreCase = true)) {
+            val file = File(target.parentFile ?: return null, "lyrics.lrc")
+            if (file.isFile && file.length() in 1..MAX_TAG_BYTES.toLong()) {
+                return runCatching { file.readText() }
+                    .onFailure { Log.d(TAG, "could not read package lrc $file: ${it.message}") }
+                    .getOrNull()
+                    ?.takeIf { it.isNotBlank() }
+            }
+        }
+        // 2. Companion .lrc file matching audio track name (e.g. Song.lrc for Song.mp3/flac)
+        val parent = target.parentFile ?: return null
+        val baseName = target.nameWithoutExtension
+        val lrcFile = File(parent, "$baseName.lrc").takeIf { it.isFile }
+            ?: File(parent, "$baseName.LRC").takeIf { it.isFile }
+        if (lrcFile != null && lrcFile.length() in 1..MAX_TAG_BYTES.toLong()) {
+            return runCatching { lrcFile.readText() }
+                .onFailure { Log.d(TAG, "could not read companion lrc $lrcFile: ${it.message}") }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+        }
+        return null
     }
 
     /**

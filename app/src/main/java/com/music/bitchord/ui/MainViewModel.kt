@@ -139,6 +139,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _searchScrollReset = MutableStateFlow(0)
     val searchScrollReset: StateFlow<Int> = _searchScrollReset.asStateFlow()
 
+    private val _localSongs = MutableStateFlow<UiState<List<Song>>>(UiState.Loading)
+    val localSongs: StateFlow<UiState<List<Song>>> = _localSongs.asStateFlow()
+
     /**
      * What the search page offers while a query is being typed, led by the
      * query itself.
@@ -1036,8 +1039,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             // drop(1): the current value is just the count so far, not a play.
             PlaybackTracker.registeredPlays.drop(1).collect { homeStale = true }
         }
+        loadLocalMusic()
+        viewModelScope.launch {
+            AppSettings.blacklistedFolders.drop(1).collect {
+                loadLocalMusic()
+            }
+        }
         viewModelScope.launch {
             AppSettings.filterNonMusicAudio.drop(1).collect {
+                loadLocalMusic()
                 if (_detailStack.value.any { page -> page.browseId == "local:all" }) {
                     reloadLocalDetail("local:all")
                 }
@@ -1539,6 +1549,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     return@collectLatest
                 }
 
+                // Pure local music search: query cached/loaded local songs
+                val localTracks = (_localSongs.value as? UiState.Success)?.data.orEmpty()
+                val matchingLocal = localTracks.filter {
+                    it.title.contains(request.query, ignoreCase = true) ||
+                        it.artist.contains(request.query, ignoreCase = true) ||
+                        it.albumName?.contains(request.query, ignoreCase = true) == true ||
+                        it.localPath?.contains(request.query, ignoreCase = true) == true
+                }
+                if (matchingLocal.isNotEmpty()) {
+                    val searchResults = matchingLocal.map { SearchResult.Track(it) }
+                    _results.value = UiState.Success(searchResults)
+                    return@collectLatest
+                }
+
                 // Search is YouTube's alone. A module is a *substitution*
                 // layer, not a catalogue to browse: it never has cover art,
                 // radio, related tracks or an album page, so its rows arrived
@@ -1793,6 +1817,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
          */
     }
 
+    fun openLocalDetail(
+        browseId: String,
+        title: String,
+        subtitle: String = "",
+        thumbnailUrl: String? = null,
+        type: BrowseType = BrowseType.OTHER,
+        songs: List<Song>,
+    ) {
+        _detailStack.value += DetailPage(
+            browseId = browseId,
+            title = title,
+            subtitle = subtitle,
+            thumbnailUrl = thumbnailUrl,
+            songs = UiState.Success(songs),
+            type = type,
+        )
+    }
+
     fun openDetail(
         browseId: String,
         title: String,
@@ -1940,6 +1982,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             // Only once the first page is on screen: [fillIn] appends to it,
             // and has nothing to append to before this.
             more?.let { fillIn(browseId, it, thumbnailUrl ?: artwork) }
+        }
+    }
+
+    fun loadLocalMusic() {
+        viewModelScope.launch {
+            _localSongs.value = UiState.Loading
+            val context = getApplication<Application>()
+            if (!LocalMediaRepository.hasStoragePermission(context)) {
+                _localSongs.value = UiState.Error(text(R.string.storage_required_read))
+            } else {
+                val songs = LocalMediaRepository.getLocalMusic(context)
+                if (songs.isEmpty()) {
+                    _localSongs.value = UiState.Error(text(R.string.no_local_audio_found))
+                } else {
+                    _localSongs.value = UiState.Success(songs)
+                }
+            }
         }
     }
 

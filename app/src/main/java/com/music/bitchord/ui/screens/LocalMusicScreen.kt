@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +42,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
@@ -55,24 +57,42 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.Sort
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import com.music.bitchord.data.LocalMediaRepository
+import com.music.bitchord.data.model.durationMillis
+import com.music.bitchord.feature.localmusic.domain.model.LocalFolder
+import com.music.bitchord.feature.localmusic.domain.model.LocalPlaylist
+import com.music.bitchord.feature.localmusic.data.LocalPlaylistStore
+import com.music.bitchord.feature.localmusic.ui.components.LocalFoldersTab
+import com.music.bitchord.feature.localmusic.ui.components.LocalPlaylistsTab
+import com.music.bitchord.feature.localmusic.ui.components.BlacklistedFoldersSheet
+import com.music.bitchord.feature.localmusic.ui.components.CreatePlaylistDialog
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -107,14 +127,25 @@ import com.music.bitchord.ui.components.SongRow
 import com.music.bitchord.ui.components.thumbnailBorder
 import com.music.bitchord.ui.components.TopBarContentGap
 import com.music.bitchord.ui.components.topBarHeight
+import com.music.bitchord.feature.localsongactions.ui.LocalSongActionsHelper
+import com.music.bitchord.feature.localsongactions.ui.components.LocalAddToPlaylistSheet
+import com.music.bitchord.feature.localsongactions.ui.components.LocalDeleteConfirmDialog
+import com.music.bitchord.feature.localsongactions.ui.components.LocalLyricsEditorSheet
+import com.music.bitchord.feature.localsongactions.ui.components.LocalSongDetailsSheet
+import com.music.bitchord.feature.localsongactions.ui.components.LocalSongDropdownMenu
+import com.music.bitchord.feature.localsongactions.ui.components.LocalTagEditorSheet
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
 import com.music.bitchord.ui.icons.BitChordIcons
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import java.util.Locale
 
-private const val LOCAL_TAB_SONGS = 0
-private const val LOCAL_TAB_ARTISTS = 1
-private const val LOCAL_TAB_ALBUMS = 2
+const val LOCAL_TAB_SONGS = 0
+const val LOCAL_TAB_ALBUMS = 1
+const val LOCAL_TAB_ARTISTS = 2
+const val LOCAL_TAB_FOLDERS = 3
+const val LOCAL_TAB_PLAYLISTS = 4
 
 /**
  * Local Music folder view with three tabs: Songs (default), Artists, Albums.
@@ -129,6 +160,7 @@ private const val LOCAL_TAB_ALBUMS = 2
  * the tab bar stays visible and Back returns to the grid rather than leaving
  * the screen.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocalMusicScreen(
     songs: List<Song>,
@@ -168,15 +200,30 @@ fun LocalMusicScreen(
     isPlaying: Boolean = false,
     /** Deletes the Downloads rows selected through this screen's long-press mode. */
     onDeleteDownloads: ((List<Song>) -> Unit)? = null,
+    initialTab: Int = LOCAL_TAB_SONGS,
+    showTabRow: Boolean = false,
     modifier: Modifier = Modifier,
+    onPlayNext: ((Song) -> Unit)? = null,
+    onAddToQueue: ((Song) -> Unit)? = null,
+    onDeleteSong: ((Song) -> Unit)? = null,
 ) {
+    val context = LocalContext.current
+    var activeMenuSong by remember { mutableStateOf<Song?>(null) }
+    var detailsSong by remember { mutableStateOf<Song?>(null) }
+    var tagEditorSong by remember { mutableStateOf<Song?>(null) }
+    var lyricsEditorSong by remember { mutableStateOf<Song?>(null) }
+    var deleteSong by remember { mutableStateOf<Song?>(null) }
+    var addToPlaylistSong by remember { mutableStateOf<Song?>(null) }
+
     // Which top-level tab is selected.
-    var selectedTab by rememberSaveable { mutableIntStateOf(LOCAL_TAB_SONGS) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(initialTab) }
+
+    LaunchedEffect(initialTab) {
+        selectedTab = initialTab
+    }
 
     // Narrows whichever tab is showing — songs by title/artist/album, artists
     // and albums by name. Not saved across process death: a filter left on a
-    // folder that was never reopened is more surprising than one that reset.
-    var searchQuery by rememberSaveable { mutableStateOf("") }
     val sortOrder by if (isDownloads) {
         AppSettings.downloadedMusicSort.collectAsStateWithLifecycle()
     } else {
@@ -193,6 +240,19 @@ fun LocalMusicScreen(
     // can share tracks, so inferring an album's selection from those track ids
     // made one held playlist appear to select unrelated albums.
     var selectedAlbumKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val scope = rememberCoroutineScope()
+    val blacklistedFolders by AppSettings.blacklistedFolders.collectAsStateWithLifecycle()
+    val localPlaylists by LocalPlaylistStore.playlists.collectAsStateWithLifecycle()
+    var discoveredFolders by remember { mutableStateOf<List<LocalFolder>>(emptyList()) }
+    var showManageFoldersSheet by remember { mutableStateOf(false) }
+    val manageFoldersSheetState = rememberModalBottomSheetState()
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
+    var playlistToRename by remember { mutableStateOf<LocalPlaylist?>(null) }
+
+    LaunchedEffect(Unit) {
+        discoveredFolders = LocalMediaRepository.getAllDiscoveredFolders(context)
+    }
+
     val selectingDownloads = isDownloads && selectedDownloadIds.isNotEmpty()
 
     fun toggleDownloadSelection(song: Song) {
@@ -228,26 +288,86 @@ fun LocalMusicScreen(
         drillDownArt = null
     }
 
+    val songDropdownMenu: @Composable (Song) -> Unit = { song ->
+        LocalSongDropdownMenu(
+            expanded = (activeMenuSong?.videoId == song.videoId),
+            onDismissRequest = { activeMenuSong = null },
+            song = song,
+            onQueueNext = {
+                activeMenuSong = null
+                onPlayNext?.invoke(song) ?: onSongSwipe(song)
+                Toast.makeText(context, "Queued next", Toast.LENGTH_SHORT).show()
+            },
+            onAddToQueue = {
+                activeMenuSong = null
+                onAddToQueue?.invoke(song) ?: onSongSwipe(song)
+                Toast.makeText(context, "Added to playing queue", Toast.LENGTH_SHORT).show()
+            },
+            onAddToPlaylist = {
+                activeMenuSong = null
+                addToPlaylistSong = song
+            },
+            onGoToAlbum = if (!song.albumName.isNullOrBlank()) {
+                { targetAlbum ->
+                    activeMenuSong = null
+                    drillDownLabel = targetAlbum
+                    drillDownSongs = songs.filter { it.albumName == targetAlbum }
+                    drillDownArt = songs.find { it.albumName == targetAlbum }?.thumbnailUrl
+                }
+            } else null,
+            onGoToArtist = if (song.artist.isNotBlank()) {
+                { targetArtist ->
+                    activeMenuSong = null
+                    drillDownLabel = targetArtist
+                    drillDownSongs = songs.filter { it.artist == targetArtist }
+                    drillDownArt = null
+                }
+            } else null,
+            onGoToFolder = if (!song.localPath.isNullOrBlank()) {
+                { targetFolder ->
+                    activeMenuSong = null
+                    drillDownLabel = targetFolder.substringAfterLast('/')
+                    drillDownSongs = songs.filter { (it.localPath ?: "").substringBeforeLast('/') == targetFolder }
+                    drillDownArt = null
+                }
+            } else null,
+            onTagEditor = {
+                activeMenuSong = null
+                tagEditorSong = song
+            },
+            onShare = {
+                activeMenuSong = null
+                LocalSongActionsHelper.shareSong(context, song)
+            },
+            onDeleteFromDevice = {
+                activeMenuSong = null
+                deleteSong = song
+            },
+            onDetails = {
+                activeMenuSong = null
+                detailsSong = song
+            },
+        )
+    }
+
     BackHandler(enabled = selectingDownloads) {
         selectedDownloadIds = emptySet()
         selectedAlbumKeys = emptySet()
     }
     BackHandler(enabled = inDrillDown && !selectingDownloads) { leaveDrillDown() }
 
-    // The tab row is fixed above the scrolling content, so its own top
-    // padding has to clear the frosted top bar / status bar that the
-    // LazyColumns beneath it would otherwise scroll under.
-    val bodyContentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding())
+    // When tab row is showing, content scrolls beneath it. When tab row is hidden (bottom bar handles tabs),
+    // content takes the full content padding including top bar padding.
+    val bodyContentPadding = if (showTabRow) {
+        PaddingValues(bottom = contentPadding.calculateBottomPadding())
+    } else {
+        contentPadding
+    }
 
-    // contentPadding.top carries extra breathing room meant for scrolling
-    // content resting under the glass bar; the tab row is fixed and sits
-    // right below the bar, so it only needs to clear the bar itself.
     val barHeight = topBarHeight()
 
     Column(modifier = modifier.fillMaxSize()) {
         // ── Search ───────────────────────────────────────────────────────────
-        // Above the tabs rather than inside each one, since a query typed on
-        // Songs is just as reasonable to carry over to Artists or Albums.
         if (selectingDownloads) {
             DownloadSelectionBar(
                 count = selectedDownloadIds.size,
@@ -270,71 +390,74 @@ fun LocalMusicScreen(
                     bottom = 4.dp,
                 ),
             )
-        } else LocalSearchField(
-            query = searchQuery,
-            onQueryChange = { searchQuery = it },
-            sortOrder = sortOrder,
-            onSortOrderChange = {
-                if (isDownloads) AppSettings.setDownloadedMusicSort(it)
-                else AppSettings.setLocalMusicSort(it)
-            },
-            viewType = viewType,
-            onViewTypeToggle = {
-                val next = if (viewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
-                if (isDownloads) AppSettings.setDownloadedMusicViewType(next)
-                else AppSettings.setLocalMusicViewType(next)
-            },
-            modifier = Modifier.padding(
-                // The same clearance every other page under the frosted bar
-                // gets — see topBarContentPadding, which this screen can't use
-                // directly since its tab row is fixed and only the search field
-                // above it needs to clear the bar.
-                top = barHeight + TopBarContentGap,
-                start = PAGE_GUTTER,
-                end = PAGE_GUTTER,
-                bottom = 4.dp,
-            ),
-        )
+        }
 
         // ── Tab row ──────────────────────────────────────────────────────────
-        TabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = MaterialTheme.colorScheme.background,
-            contentColor = MaterialTheme.colorScheme.primary,
-            indicator = { tabPositions ->
-                TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                    color = MaterialTheme.colorScheme.primary,
+        if (showTabRow) {
+            ScrollableTabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.primary,
+                edgePadding = PAGE_GUTTER,
+                divider = {},
+                indicator = { tabPositions ->
+                    if (selectedTab < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                },
+                modifier = Modifier.padding(top = if (selectingDownloads) 0.dp else barHeight + 4.dp),
+            ) {
+                LocalTab(
+                    icon = Icons.Rounded.MusicNote,
+                    label = stringResource(R.string.songs),
+                    selected = selectedTab == LOCAL_TAB_SONGS,
+                    onClick = {
+                        selectedTab = LOCAL_TAB_SONGS
+                        leaveDrillDown()
+                    },
                 )
-            },
-        ) {
-            LocalTab(
-                icon = Icons.Rounded.MusicNote,
-                label = stringResource(R.string.songs),
-                selected = selectedTab == LOCAL_TAB_SONGS,
-                onClick = {
-                    selectedTab = LOCAL_TAB_SONGS
-                    leaveDrillDown()
-                },
-            )
-            LocalTab(
-                icon = Icons.Rounded.Person,
-                label = stringResource(R.string.artists),
-                selected = selectedTab == LOCAL_TAB_ARTISTS,
-                onClick = {
-                    selectedTab = LOCAL_TAB_ARTISTS
-                    leaveDrillDown()
-                },
-            )
-            LocalTab(
-                icon = Icons.Rounded.Album,
-                label = stringResource(R.string.albums),
-                selected = selectedTab == LOCAL_TAB_ALBUMS,
-                onClick = {
-                    selectedTab = LOCAL_TAB_ALBUMS
-                    leaveDrillDown()
-                },
-            )
+                LocalTab(
+                    icon = Icons.Rounded.Album,
+                    label = stringResource(R.string.albums),
+                    selected = selectedTab == LOCAL_TAB_ALBUMS,
+                    onClick = {
+                        selectedTab = LOCAL_TAB_ALBUMS
+                        leaveDrillDown()
+                    },
+                )
+                LocalTab(
+                    icon = Icons.Rounded.Person,
+                    label = stringResource(R.string.artists),
+                    selected = selectedTab == LOCAL_TAB_ARTISTS,
+                    onClick = {
+                        selectedTab = LOCAL_TAB_ARTISTS
+                        leaveDrillDown()
+                    },
+                )
+                if (!isDownloads) {
+                    LocalTab(
+                        icon = Icons.Rounded.Folder,
+                        label = "Folders",
+                        selected = selectedTab == LOCAL_TAB_FOLDERS,
+                        onClick = {
+                            selectedTab = LOCAL_TAB_FOLDERS
+                            leaveDrillDown()
+                        },
+                    )
+                    LocalTab(
+                        icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                        label = "Playlists",
+                        selected = selectedTab == LOCAL_TAB_PLAYLISTS,
+                        onClick = {
+                            selectedTab = LOCAL_TAB_PLAYLISTS
+                            leaveDrillDown()
+                        },
+                    )
+                }
+            }
         }
 
         // ── Content ──────────────────────────────────────────────────────────
@@ -382,11 +505,15 @@ fun LocalMusicScreen(
                         },
                         onSongLongPress = { song ->
                             if (isDownloads) selectedDownloadIds = selectedDownloadIds + song.videoId
-                            else onSongLongPress(song)
+                            else activeMenuSong = song
                         },
-                        // Downloads redefines the hold as "select", so the ⋮ has to
-                        // carry the actions sheet itself or the page loses it.
-                        onSongMore = onSongLongPress,
+                        onSongMore = { song ->
+                            if (isDownloads) {
+                                selectedDownloadIds = selectedDownloadIds + song.videoId
+                            } else {
+                                activeMenuSong = song
+                            }
+                        },
                         onSongSwipe = onSongSwipe,
                         onShuffle = onShuffle,
                         onMore = onCollectionLongPress?.let { more ->
@@ -394,17 +521,24 @@ fun LocalMusicScreen(
                         },
                         onBack = leaveDrillDown,
                         contentPadding = bodyContentPadding,
+                        songDropdownMenu = if (isDownloads) null else songDropdownMenu,
                     )
                 }
 
                 key == "tab:$LOCAL_TAB_SONGS" -> {
-                    val filteredSongs = remember(sortedSongs, searchQuery) {
-                        if (searchQuery.isBlank()) sortedSongs
-                        else sortedSongs.filter { it.matchesSearch(searchQuery) }
-                    }
                     SongsTab(
-                        songs = filteredSongs,
+                        songs = sortedSongs,
                         viewType = viewType,
+                        sortOrder = sortOrder,
+                        onSortOrderChange = {
+                            if (isDownloads) AppSettings.setDownloadedMusicSort(it)
+                            else AppSettings.setLocalMusicSort(it)
+                        },
+                        onViewTypeToggle = {
+                            val next = if (viewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
+                            if (isDownloads) AppSettings.setDownloadedMusicViewType(next)
+                            else AppSettings.setLocalMusicViewType(next)
+                        },
                         selectedIds = selectedDownloadIds,
                         currentSong = currentSong,
                         isPlaying = isPlaying,
@@ -417,26 +551,37 @@ fun LocalMusicScreen(
                                 selectedDownloadIds = selectedDownloadIds + song.videoId
                                 selectedTab = LOCAL_TAB_SONGS
                                 leaveDrillDown()
-                            } else onSongLongPress(song)
+                            } else activeMenuSong = song
                         },
-                        // Downloads redefines the hold as "select", so the ⋮ has to
-                        // carry the actions sheet itself or the page loses it.
-                        onSongMore = onSongLongPress,
+                        onSongMore = { song ->
+                            if (isDownloads) {
+                                selectedDownloadIds = selectedDownloadIds + song.videoId
+                                selectedTab = LOCAL_TAB_SONGS
+                                leaveDrillDown()
+                            } else {
+                                activeMenuSong = song
+                            }
+                        },
                         onSongSwipe = onSongSwipe,
                         contentPadding = bodyContentPadding,
+                        songDropdownMenu = if (isDownloads) null else songDropdownMenu,
                     )
                 }
 
                 key == "tab:$LOCAL_TAB_ARTISTS" -> {
-                    val artists = remember(sortedSongs, searchQuery) {
+                    val artists = remember(sortedSongs) {
                         sortedSongs.groupBy { it.artist }
                             .entries
-                            .filter { searchQuery.isBlank() || it.key.contains(searchQuery, ignoreCase = true) }
                             .sortedBy { it.key.lowercase(Locale.ROOT) }
                     }
                     ArtistsTab(
                         artists = artists,
                         viewType = viewType,
+                        onViewTypeToggle = {
+                            val next = if (viewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
+                            if (isDownloads) AppSettings.setDownloadedMusicViewType(next)
+                            else AppSettings.setLocalMusicViewType(next)
+                        },
                         onArtistClick = { artist, artistSongs ->
                             drillDownLabel = artist
                             drillDownSongs = artistSongs
@@ -447,18 +592,18 @@ fun LocalMusicScreen(
                     )
                 }
 
-                else -> {
-                    // LOCAL_TAB_ALBUMS
-                    val albums = remember(sortedSongs, collections, searchQuery) {
-                        albumEntries(sortedSongs, collections).filter {
-                            searchQuery.isBlank() ||
-                                it.title.contains(searchQuery, ignoreCase = true) ||
-                                it.artist.contains(searchQuery, ignoreCase = true)
-                        }
+                key == "tab:$LOCAL_TAB_ALBUMS" -> {
+                    val albums = remember(sortedSongs, collections) {
+                        albumEntries(sortedSongs, collections)
                     }
                     AlbumsTab(
                         albums = albums,
                         viewType = viewType,
+                        onViewTypeToggle = {
+                            val next = if (viewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
+                            if (isDownloads) AppSettings.setDownloadedMusicViewType(next)
+                            else AppSettings.setLocalMusicViewType(next)
+                        },
                         selectedKeys = selectedAlbumKeys,
                         onAlbumClick = { entry ->
                             if (selectingDownloads) {
@@ -478,8 +623,139 @@ fun LocalMusicScreen(
                         contentPadding = bodyContentPadding,
                     )
                 }
+
+                key == "tab:$LOCAL_TAB_FOLDERS" -> {
+                    val nonBlacklistedFolders = remember(discoveredFolders, blacklistedFolders) {
+                        discoveredFolders.filter { !it.isBlacklisted }
+                    }
+                    LocalFoldersTab(
+                        folders = nonBlacklistedFolders,
+                        onFolderClick = { folder ->
+                            drillDownLabel = folder.name
+                            drillDownSongs = songs.filter { (it.localPath ?: "").substringBeforeLast('/') == folder.path }
+                            drillDownArt = null
+                        },
+                        onToggleBlacklist = { path, isBlacklisted ->
+                            AppSettings.setFolderBlacklisted(path, isBlacklisted)
+                            scope.launch {
+                                discoveredFolders = LocalMediaRepository.getAllDiscoveredFolders(context)
+                            }
+                        },
+                        onOpenManageFolders = { showManageFoldersSheet = true },
+                        contentPadding = bodyContentPadding,
+                    )
+                }
+
+                key == "tab:$LOCAL_TAB_PLAYLISTS" -> {
+                    LocalPlaylistsTab(
+                        playlists = localPlaylists,
+                        onPlaylistClick = { playlist ->
+                            drillDownLabel = playlist.name
+                            drillDownSongs = playlist.songIds.mapNotNull { id -> songs.find { s -> s.localUri == id || s.videoId == id } }
+                            drillDownArt = playlist.coverUrl
+                        },
+                        onPlaylistPlay = { playlist ->
+                            val pSongs = playlist.songIds.mapNotNull { id -> songs.find { s -> s.localUri == id || s.videoId == id } }
+                            if (pSongs.isNotEmpty()) onSongClick(pSongs, 0)
+                        },
+                        onCreatePlaylist = { showCreatePlaylistDialog = true },
+                        onRenamePlaylist = { playlistToRename = it },
+                        onDeletePlaylist = { LocalPlaylistStore.deletePlaylist(it.id) },
+                        contentPadding = bodyContentPadding,
+                    )
+                }
             }
         }
+    }
+
+    if (showCreatePlaylistDialog) {
+        CreatePlaylistDialog(
+            onConfirm = { name ->
+                LocalPlaylistStore.createPlaylist(name)
+                showCreatePlaylistDialog = false
+            },
+            onDismiss = { showCreatePlaylistDialog = false },
+        )
+    }
+
+    if (playlistToRename != null) {
+        CreatePlaylistDialog(
+            initialName = playlistToRename!!.name,
+            title = "Rename Playlist",
+            confirmText = "Rename",
+            onConfirm = { name ->
+                LocalPlaylistStore.renamePlaylist(playlistToRename!!.id, name)
+                playlistToRename = null
+            },
+            onDismiss = { playlistToRename = null },
+        )
+    }
+
+    if (showManageFoldersSheet) {
+        BlacklistedFoldersSheet(
+            folders = discoveredFolders,
+            onToggleBlacklist = { path, isBlacklisted ->
+                AppSettings.setFolderBlacklisted(path, isBlacklisted)
+                scope.launch {
+                    discoveredFolders = LocalMediaRepository.getAllDiscoveredFolders(context)
+                }
+            },
+            sheetState = manageFoldersSheetState,
+            onDismiss = { showManageFoldersSheet = false },
+        )
+    }
+
+    detailsSong?.let { song ->
+        LocalSongDetailsSheet(
+            song = song,
+            onDismissRequest = { detailsSong = null },
+            onLyricsEditorClick = {
+                val target = detailsSong
+                detailsSong = null
+                lyricsEditorSong = target
+            },
+            onTagEditorClick = {
+                val target = detailsSong
+                detailsSong = null
+                tagEditorSong = target
+            },
+        )
+    }
+
+    tagEditorSong?.let { song ->
+        LocalTagEditorSheet(
+            song = song,
+            onDismissRequest = { tagEditorSong = null },
+            onTagsSaved = {
+                tagEditorSong = null
+                onDeleteSong?.invoke(song)
+            },
+        )
+    }
+
+    lyricsEditorSong?.let { song ->
+        LocalLyricsEditorSheet(
+            song = song,
+            onDismissRequest = { lyricsEditorSong = null },
+        )
+    }
+
+    deleteSong?.let { song ->
+        LocalDeleteConfirmDialog(
+            song = song,
+            onDismissRequest = { deleteSong = null },
+            onDeleted = {
+                deleteSong = null
+                onDeleteSong?.invoke(song)
+            },
+        )
+    }
+
+    addToPlaylistSong?.let { song ->
+        LocalAddToPlaylistSheet(
+            song = song,
+            onDismissRequest = { addToPlaylistSong = null },
+        )
     }
 }
 
@@ -489,6 +765,9 @@ fun LocalMusicScreen(
 private fun SongsTab(
     songs: List<Song>,
     viewType: LibraryViewType,
+    sortOrder: LocalMusicSort,
+    onSortOrderChange: (LocalMusicSort) -> Unit,
+    onViewTypeToggle: () -> Unit,
     selectedIds: Set<String> = emptySet(),
     currentSong: Song? = null,
     isPlaying: Boolean = false,
@@ -498,6 +777,7 @@ private fun SongsTab(
     onSongMore: ((Song) -> Unit)? = null,
     onSongSwipe: (Song) -> Unit,
     contentPadding: PaddingValues,
+    songDropdownMenu: (@Composable (Song) -> Unit)? = null,
 ) {
     if (viewType == LibraryViewType.GRID) {
         val gridState = rememberLazyGridState()
@@ -508,7 +788,7 @@ private fun SongsTab(
             contentPadding = PaddingValues(
                 start = PAGE_GUTTER,
                 end = PAGE_GUTTER,
-                top = 6.dp,
+                top = contentPadding.calculateTopPadding() + 6.dp,
                 bottom = contentPadding.calculateBottomPadding() + 8.dp,
             ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -518,7 +798,15 @@ private fun SongsTab(
                 SectionHeader(
                     icon = Icons.Rounded.LibraryMusic,
                     title = pluralStringResource(R.plurals.song_count_plural, songs.size, songs.size),
-                    modifier = Modifier.padding(horizontal = 0.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 0.dp, vertical = 6.dp),
+                    actions = {
+                        LocalViewAndSortControls(
+                            sortOrder = sortOrder,
+                            onSortOrderChange = onSortOrderChange,
+                            viewType = viewType,
+                            onViewTypeToggle = onViewTypeToggle,
+                        )
+                    },
                 )
             }
             itemsIndexed(songs) { index, song ->
@@ -542,6 +830,14 @@ private fun SongsTab(
                 SectionHeader(
                     icon = Icons.Rounded.LibraryMusic,
                     title = pluralStringResource(R.plurals.song_count_plural, songs.size, songs.size),
+                    actions = {
+                        LocalViewAndSortControls(
+                            sortOrder = sortOrder,
+                            onSortOrderChange = onSortOrderChange,
+                            viewType = viewType,
+                            onViewTypeToggle = onViewTypeToggle,
+                        )
+                    },
                 )
             }
             itemsIndexed(songs) { index, song ->
@@ -554,6 +850,7 @@ private fun SongsTab(
                     onLongPress = { onSongLongPress(song) },
                     onMore = onSongMore?.let { more -> { more(song) } },
                     onSwipeToQueue = { onSongSwipe(song) },
+                    dropdownMenu = songDropdownMenu?.let { menu -> { menu(song) } },
                 )
                 if (index < songs.lastIndex) {
                     HorizontalDivider(
@@ -639,6 +936,7 @@ private fun SongGridCard(
 private fun ArtistsTab(
     artists: List<Map.Entry<String, List<Song>>>,
     viewType: LibraryViewType,
+    onViewTypeToggle: () -> Unit,
     onArtistClick: (String, List<Song>) -> Unit,
     onArtistLongPress: ((String, List<Song>) -> Unit)?,
     contentPadding: PaddingValues,
@@ -652,7 +950,7 @@ private fun ArtistsTab(
             contentPadding = PaddingValues(
                 start = PAGE_GUTTER,
                 end = PAGE_GUTTER,
-                top = 6.dp,
+                top = contentPadding.calculateTopPadding() + 6.dp,
                 bottom = contentPadding.calculateBottomPadding() + 8.dp,
             ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -662,7 +960,16 @@ private fun ArtistsTab(
                 SectionHeader(
                     icon = Icons.Rounded.Person,
                     title = pluralStringResource(R.plurals.artist_count, artists.size, artists.size),
-                    modifier = Modifier.padding(horizontal = 0.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 0.dp, vertical = 6.dp),
+                    actions = {
+                        LocalViewAndSortControls(
+                            sortOrder = LocalMusicSort.TITLE_ASC,
+                            onSortOrderChange = {},
+                            viewType = viewType,
+                            onViewTypeToggle = onViewTypeToggle,
+                            showSort = false,
+                        )
+                    },
                 )
             }
             items(artists, key = { it.key }) { (artist, artistSongs) ->
@@ -686,6 +993,15 @@ private fun ArtistsTab(
                 SectionHeader(
                     icon = Icons.Rounded.Person,
                     title = pluralStringResource(R.plurals.artist_count, artists.size, artists.size),
+                    actions = {
+                        LocalViewAndSortControls(
+                            sortOrder = LocalMusicSort.TITLE_ASC,
+                            onSortOrderChange = {},
+                            viewType = viewType,
+                            onViewTypeToggle = onViewTypeToggle,
+                            showSort = false,
+                        )
+                    },
                 )
             }
             items(artists, key = { it.key }) { (artist, artistSongs) ->
@@ -924,6 +1240,7 @@ private fun albumEntries(
 private fun AlbumsTab(
     albums: List<AlbumEntry>,
     viewType: LibraryViewType,
+    onViewTypeToggle: () -> Unit,
     selectedKeys: Set<String> = emptySet(),
     onAlbumClick: (AlbumEntry) -> Unit,
     onAlbumLongPress: ((AlbumEntry) -> Unit)?,
@@ -938,7 +1255,7 @@ private fun AlbumsTab(
             contentPadding = PaddingValues(
                 start = PAGE_GUTTER,
                 end = PAGE_GUTTER,
-                top = 6.dp,
+                top = contentPadding.calculateTopPadding() + 6.dp,
                 bottom = contentPadding.calculateBottomPadding() + 8.dp,
             ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -948,7 +1265,16 @@ private fun AlbumsTab(
                 SectionHeader(
                     icon = Icons.Rounded.Album,
                     title = pluralStringResource(R.plurals.album_count, albums.size, albums.size),
-                    modifier = Modifier.padding(horizontal = 0.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 0.dp, vertical = 6.dp),
+                    actions = {
+                        LocalViewAndSortControls(
+                            sortOrder = LocalMusicSort.TITLE_ASC,
+                            onSortOrderChange = {},
+                            viewType = viewType,
+                            onViewTypeToggle = onViewTypeToggle,
+                            showSort = false,
+                        )
+                    },
                 )
             }
             if (albums.isEmpty()) {
@@ -978,6 +1304,15 @@ private fun AlbumsTab(
                 SectionHeader(
                     icon = Icons.Rounded.Album,
                     title = pluralStringResource(R.plurals.album_count, albums.size, albums.size),
+                    actions = {
+                        LocalViewAndSortControls(
+                            sortOrder = LocalMusicSort.TITLE_ASC,
+                            onSortOrderChange = {},
+                            viewType = viewType,
+                            onViewTypeToggle = onViewTypeToggle,
+                            showSort = false,
+                        )
+                    },
                 )
             }
             if (albums.isEmpty()) {
@@ -1187,33 +1522,14 @@ private fun DrillDownHeader(
     label: String,
     artworkUrl: String?,
     songs: List<Song>,
-    onBack: () -> Unit,
-    onMore: (() -> Unit)?,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 6.dp, end = PAGE_GUTTER, top = 6.dp, bottom = 12.dp),
+            .padding(start = PAGE_GUTTER, end = PAGE_GUTTER, top = 12.dp, bottom = 12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Rounded.ArrowBack, stringResource(R.string.back), tint = MaterialTheme.colorScheme.onBackground)
-            }
-            Spacer(Modifier.weight(1f))
-            onMore?.let { more ->
-                Box(
-                    modifier = Modifier.size(44.dp).clip(CircleShape).clickable(onClick = more),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Rounded.MoreHoriz, stringResource(R.string.more), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
         Box(
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp).size(188.dp)
+            modifier = Modifier.align(Alignment.CenterHorizontally).size(188.dp)
                 .clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.secondaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -1260,6 +1576,7 @@ private fun DrillDownActionRow(
     songs: List<Song>,
     onSongClick: (List<Song>, Int) -> Unit,
     onShuffle: (List<Song>) -> Unit,
+    onMore: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -1308,6 +1625,24 @@ private fun DrillDownActionRow(
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
+        if (onMore != null) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+                    .border(0.5.dp, Color.White.copy(alpha = 0.10f), CircleShape)
+                    .clickable(onClick = onMore),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Rounded.MoreHoriz,
+                    contentDescription = stringResource(R.string.more),
+                    tint = if (isSystemInDarkTheme()) Color.White else Color.Black,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
     }
     Spacer(Modifier.height(4.dp))
 }
@@ -1332,6 +1667,7 @@ private fun DrillDownSongList(
     onMore: (() -> Unit)?,
     onBack: () -> Unit,
     contentPadding: PaddingValues,
+    songDropdownMenu: (@Composable (Song) -> Unit)? = null,
 ) {
     if (viewType == LibraryViewType.GRID) {
         val gridState = rememberLazyGridState()
@@ -1342,7 +1678,7 @@ private fun DrillDownSongList(
             contentPadding = PaddingValues(
                 start = PAGE_GUTTER,
                 end = PAGE_GUTTER,
-                top = 0.dp,
+                top = contentPadding.calculateTopPadding(),
                 bottom = contentPadding.calculateBottomPadding() + 8.dp,
             ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1353,8 +1689,6 @@ private fun DrillDownSongList(
                     label = label,
                     artworkUrl = artworkUrl,
                     songs = songs,
-                    onBack = onBack,
-                    onMore = onMore,
                 )
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -1362,6 +1696,7 @@ private fun DrillDownSongList(
                     songs = songs,
                     onSongClick = onSongClick,
                     onShuffle = onShuffle,
+                    onMore = onMore,
                 )
             }
             itemsIndexed(songs) { index, song ->
@@ -1386,8 +1721,6 @@ private fun DrillDownSongList(
                     label = label,
                     artworkUrl = artworkUrl,
                     songs = songs,
-                    onBack = onBack,
-                    onMore = onMore,
                 )
             }
             item {
@@ -1395,6 +1728,7 @@ private fun DrillDownSongList(
                     songs = songs,
                     onSongClick = onSongClick,
                     onShuffle = onShuffle,
+                    onMore = onMore,
                 )
             }
             itemsIndexed(songs) { index, song ->
@@ -1408,6 +1742,7 @@ private fun DrillDownSongList(
                     onLongPress = { onSongLongPress(song) },
                     onMore = onSongMore?.let { more -> { more(song) } },
                     onSwipeToQueue = { onSongSwipe(song) },
+                    dropdownMenu = songDropdownMenu?.let { menu -> { menu(song) } },
                 )
                 if (index < songs.lastIndex) {
                     HorizontalDivider(
@@ -1432,12 +1767,20 @@ private fun Song.matchesSearch(query: String): Boolean =
 private fun List<Song>.sortedForLibrary(order: LocalMusicSort): List<Song> = when (order) {
     LocalMusicSort.TITLE_ASC -> sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
     LocalMusicSort.TITLE_DESC -> sortedWith(compareByDescending<Song> { it.title.lowercase(Locale.ROOT) })
+    LocalMusicSort.ARTIST_ASC -> sortedWith(
+        compareBy<Song, String>(String.CASE_INSENSITIVE_ORDER) { it.artist }
+            .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
+    )
     LocalMusicSort.DATE_ADDED -> sortedWith(
         compareByDescending<Song> { it.localDateAddedSeconds ?: Long.MIN_VALUE }
             .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
     )
     LocalMusicSort.DATE_MODIFIED -> sortedWith(
         compareByDescending<Song> { it.localDateModifiedSeconds ?: Long.MIN_VALUE }
+            .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
+    )
+    LocalMusicSort.DURATION_DESC -> sortedWith(
+        compareByDescending<Song> { it.durationMillis() }
             .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
     )
 }
@@ -1450,126 +1793,83 @@ private fun List<Song>.sortedForLibrary(order: LocalMusicSort): List<Song> = whe
  * nothing and a submit action would just be a tap this screen doesn't need.
  */
 @Composable
-private fun LocalSearchField(
-    query: String,
-    onQueryChange: (String) -> Unit,
+private fun LocalViewAndSortControls(
     sortOrder: LocalMusicSort,
     onSortOrderChange: (LocalMusicSort) -> Unit,
     viewType: LibraryViewType,
     onViewTypeToggle: () -> Unit,
+    showViewToggle: Boolean = true,
+    showSort: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     var sortMenuOpen by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(44.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(11.dp))
-            .padding(horizontal = 12.dp),
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Icon(
-            Icons.Rounded.Search,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(Modifier.width(8.dp))
-        Box(Modifier.weight(1f)) {
-            if (query.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.search_this_folder),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onBackground,
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        if (query.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .clickable { onQueryChange("") },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.Close,
-                    contentDescription = stringResource(R.string.clear_search),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Spacer(Modifier.width(4.dp))
-        }
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .clickable {
-                    haptics.play(Haptic.Select)
-                    onViewTypeToggle()
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = if (viewType == LibraryViewType.GRID) BitChordIcons.ListView else BitChordIcons.GridView,
-                contentDescription = stringResource(
-                    if (viewType == LibraryViewType.GRID) R.string.switch_to_list_view else R.string.switch_to_grid_view,
-                ),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(19.dp),
-            )
-        }
-        Spacer(Modifier.width(2.dp))
-        Box {
+        if (showViewToggle) {
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .clickable { sortMenuOpen = true },
+                    .clickable {
+                        haptics.play(Haptic.Select)
+                        onViewTypeToggle()
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    Icons.Rounded.Sort,
-                    contentDescription = stringResource(R.string.sort_music),
+                    imageVector = if (viewType == LibraryViewType.GRID) BitChordIcons.ListView else BitChordIcons.GridView,
+                    contentDescription = stringResource(
+                        if (viewType == LibraryViewType.GRID) R.string.switch_to_list_view else R.string.switch_to_grid_view,
+                    ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(18.dp),
                 )
             }
-            DropdownMenu(
-                expanded = sortMenuOpen,
-                onDismissRequest = { sortMenuOpen = false },
-            ) {
-                LocalMusicSort.entries.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option.localizedLabel()) },
-                        trailingIcon = if (option == sortOrder) {
-                            {
-                                Icon(
-                                    Icons.Rounded.Check,
-                                    contentDescription = stringResource(R.string.selected),
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                        onClick = {
-                            onSortOrderChange(option)
-                            sortMenuOpen = false
-                        },
+        }
+        if (showSort) {
+            Box {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable { sortMenuOpen = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.Sort,
+                        contentDescription = stringResource(R.string.sort_music),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
                     )
+                }
+                DropdownMenu(
+                    expanded = sortMenuOpen,
+                    onDismissRequest = { sortMenuOpen = false },
+                ) {
+                    LocalMusicSort.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.localizedLabel()) },
+                            trailingIcon = if (option == sortOrder) {
+                                {
+                                    Icon(
+                                        Icons.Rounded.Check,
+                                        contentDescription = stringResource(R.string.selected),
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                            onClick = {
+                                onSortOrderChange(option)
+                                sortMenuOpen = false
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -1582,6 +1882,8 @@ private fun LocalMusicSort.localizedLabel(): String = when (this) {
     LocalMusicSort.TITLE_DESC -> stringResource(R.string.sort_title_descending)
     LocalMusicSort.DATE_ADDED -> stringResource(R.string.sort_date_added)
     LocalMusicSort.DATE_MODIFIED -> stringResource(R.string.sort_date_modified)
+    LocalMusicSort.ARTIST_ASC -> "Artist"
+    LocalMusicSort.DURATION_DESC -> "Duration"
 }
 
 /** The Downloads-only replacement for the usual search and sort controls. */
@@ -1637,9 +1939,6 @@ private fun LocalTab(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    // Fired here rather than at each of the three call sites, so Songs, Artists
-    // and Albums can't drift apart — and the Downloads folder, which is this
-    // same screen, gets it for free. Silent on the tab that's already showing.
     val haptics = rememberHaptics()
     Tab(
         selected = selected,
@@ -1668,23 +1967,30 @@ private fun LocalTab(
 private fun SectionHeader(
     icon: ImageVector,
     title: String,
-    modifier: Modifier = Modifier.padding(horizontal = PAGE_GUTTER, vertical = 14.dp),
+    modifier: Modifier = Modifier.padding(horizontal = PAGE_GUTTER, vertical = 6.dp),
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp),
-        )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        actions()
     }
 }
