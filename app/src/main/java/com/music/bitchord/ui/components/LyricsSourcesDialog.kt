@@ -54,7 +54,7 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 /**
  * Which lyric databases the player is allowed to ask.
  *
- * Same frosted iOS alert as [UpdateAvailableDialog], down to the shared
+ * Same frosted iOS alert as other system alerts, down to the shared
  * [ALERT_WIDTH]/[ALERT_CORNER] metrics and hairline [AlertRule]s, with the
  * action rows swapped for checkable ones. Checkmarks rather than Material
  * checkboxes: that is what a multiple-selection list looks like in this
