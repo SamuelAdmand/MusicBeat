@@ -26,6 +26,7 @@ import java.io.File
 object LocalLyricsManager {
 
     private const val TAG = "LocalLyricsManager"
+    private val json = Json { ignoreUnknownKeys = true }
     private val downloadedCache = mutableMapOf<String, String>()
 
     data class DownloadedLyricsResult(
@@ -79,7 +80,7 @@ object LocalLyricsManager {
                 if (response.isSuccessful) {
                     val body = response.body?.string()
                     if (!body.isNullOrBlank()) {
-                        val hits = Json { ignoreUnknownKeys = true }.parseToJsonElement(body) as? JsonArray
+                        val hits = json.parseToJsonElement(body) as? JsonArray
                         val firstHit = hits?.firstOrNull() as? JsonObject
                         if (firstHit != null) {
                             val synced = firstHit["syncedLyrics"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
@@ -108,9 +109,8 @@ object LocalLyricsManager {
     }
 
     private fun readEmbeddedLyrics(context: Context, song: Song): String {
-        val uri = getUriForSong(song) ?: return ""
         return runCatching {
-            val pfd = openFileDescriptor(context, uri, "r") ?: return ""
+            val pfd = openFileDescriptor(context, song, "r") ?: return ""
             pfd.use { desc ->
                 val metadata = TagLib.getMetadata(desc.dup().detachFd(), false)
                 val props = metadata?.propertyMap.orEmpty()
@@ -120,12 +120,10 @@ object LocalLyricsManager {
     }
 
     private fun saveEmbeddedLyrics(context: Context, song: Song, lyricsText: String): Boolean {
-        val uri = getUriForSong(song) ?: return false
         return runCatching {
-            val pfd = openFileDescriptor(context, uri, "rw") ?: return false
+            val pfd = openFileDescriptor(context, song, "rw") ?: return false
             pfd.use { desc ->
-                val fd = desc.dup().detachFd()
-                val current = TagLib.getMetadata(fd, false)?.propertyMap ?: hashMapOf()
+                val current = TagLib.getMetadata(desc.dup().detachFd(), false)?.propertyMap ?: hashMapOf()
                 val map = hashMapOf<String, Array<String>>()
                 map.putAll(current)
                 if (lyricsText.isBlank()) {
@@ -134,7 +132,19 @@ object LocalLyricsManager {
                 } else {
                     map["LYRICS"] = arrayOf(lyricsText.trim())
                 }
-                TagLib.savePropertyMap(fd, map)
+                val cleanedMap = map
+                    .filterKeys { !it.contains(Regex("(?i)REPLAYGAIN_(TRACK|ALBUM)_[A-Z0-7_]+")) }
+                    .filterValues { it.isNotEmpty() }
+                    .mapValuesTo(hashMapOf()) { it.value }
+
+                val ok = TagLib.savePropertyMap(desc.dup().detachFd(), cleanedMap)
+                if (ok) {
+                    val path = resolveFilePath(context, song)
+                    if (!path.isNullOrBlank()) {
+                        android.media.MediaScannerConnection.scanFile(context, arrayOf(path), null, null)
+                    }
+                }
+                ok
             }
         }.getOrDefault(false)
     }
@@ -183,19 +193,41 @@ object LocalLyricsManager {
         }
     }
 
-    private fun openFileDescriptor(context: Context, uri: Uri, mode: String): ParcelFileDescriptor? = runCatching {
-        if (uri.scheme == "file") {
-            val file = File(uri.path ?: return null)
-            val pfdMode = if (mode.contains("w")) {
-                ParcelFileDescriptor.MODE_READ_WRITE
-            } else {
-                ParcelFileDescriptor.MODE_READ_ONLY
-            }
-            ParcelFileDescriptor.open(file, pfdMode)
-        } else {
-            context.contentResolver.openFileDescriptor(uri, mode)
+    private fun openFileDescriptor(context: Context, song: Song, mode: String): ParcelFileDescriptor? {
+        val uri = getUriForSong(song)
+        if (uri != null) {
+            val pfd = runCatching {
+                if (uri.scheme == "file") {
+                    val file = File(uri.path ?: return null)
+                    val pfdMode = if (mode.contains("w")) {
+                        ParcelFileDescriptor.MODE_READ_WRITE
+                    } else {
+                        ParcelFileDescriptor.MODE_READ_ONLY
+                    }
+                    ParcelFileDescriptor.open(file, pfdMode)
+                } else {
+                    context.contentResolver.openFileDescriptor(uri, mode)
+                }
+            }.getOrNull()
+            if (pfd != null) return pfd
         }
-    }.getOrNull()
+
+        val path = resolveFilePath(context, song)
+        if (!path.isNullOrBlank()) {
+            val file = File(path)
+            if (file.exists()) {
+                return runCatching {
+                    val pfdMode = if (mode.contains("w")) {
+                        ParcelFileDescriptor.MODE_READ_WRITE
+                    } else {
+                        ParcelFileDescriptor.MODE_READ_ONLY
+                    }
+                    ParcelFileDescriptor.open(file, pfdMode)
+                }.getOrNull()
+            }
+        }
+        return null
+    }
 
     private fun resolveFilePath(context: Context, song: Song): String? {
         if (!song.localPath.isNullOrBlank() && File(song.localPath).exists()) {

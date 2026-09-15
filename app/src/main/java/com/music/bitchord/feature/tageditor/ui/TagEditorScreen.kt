@@ -62,6 +62,43 @@ fun TagEditorScreen(
         }
     }
 
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            viewModel.save(song)
+        } else {
+            Toast.makeText(context, "Permission denied to edit audio file", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun handleSave() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val uriStr = song.localUri ?: song.videoId
+            val uri = if (uriStr.startsWith("content://")) android.net.Uri.parse(uriStr) else null
+            if (uri != null) {
+                val hasPerm = context.checkUriPermission(
+                    uri,
+                    android.os.Process.myPid(),
+                    android.os.Process.myUid(),
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                if (!hasPerm) {
+                    val pendingIntent = runCatching {
+                        android.provider.MediaStore.createWriteRequest(context.contentResolver, listOf(uri))
+                    }.getOrNull()
+                    if (pendingIntent != null) {
+                        permissionLauncher.launch(
+                            androidx.activity.result.IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                        )
+                        return
+                    }
+                }
+            }
+        }
+        viewModel.save(song)
+    }
+
     LaunchedEffect(song) {
         viewModel.loadTags(song)
     }
@@ -100,7 +137,7 @@ fun TagEditorScreen(
         floatingActionButton = {
             TagEditorSaveFab(
                 isSaving = isSaving,
-                onSaveClick = { viewModel.save(song) },
+                onSaveClick = { handleSave() },
             )
         },
         floatingActionButtonPosition = FabPosition.End,

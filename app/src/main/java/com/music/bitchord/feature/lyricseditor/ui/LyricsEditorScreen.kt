@@ -1,12 +1,20 @@
 package com.music.bitchord.feature.lyricseditor.ui
 
+import android.app.Activity
 import android.app.SearchManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.os.Process
+import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -66,6 +74,43 @@ fun LyricsEditorScreen(
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var textFieldValue by remember { mutableStateOf(TextFieldValue(currentText)) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            viewModel.saveLyrics(song)
+        } else {
+            Toast.makeText(context, "Permission denied to edit audio file", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun handleSave() {
+        if (selectedSource == LyricsEditorSource.Embedded && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val uriStr = song.localUri ?: song.videoId
+            val uri = if (uriStr.startsWith("content://")) Uri.parse(uriStr) else null
+            if (uri != null) {
+                val hasPerm = context.checkUriPermission(
+                    uri,
+                    Process.myPid(),
+                    Process.myUid(),
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                ) == PackageManager.PERMISSION_GRANTED
+                if (!hasPerm) {
+                    val pendingIntent = runCatching {
+                        MediaStore.createWriteRequest(context.contentResolver, listOf(uri))
+                    }.getOrNull()
+                    if (pendingIntent != null) {
+                        permissionLauncher.launch(
+                            IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                        )
+                        return
+                    }
+                }
+            }
+        }
+        viewModel.saveLyrics(song)
+    }
 
     // Sync external currentText changes into TextFieldValue
     LaunchedEffect(currentText) {
@@ -127,7 +172,7 @@ fun LyricsEditorScreen(
                     showDownloadDialog = true
                 },
                 onSaveClick = {
-                    viewModel.saveLyrics(song)
+                    handleSave()
                 },
                 onPasteClick = {
                     val clip = clipboardManager?.primaryClip

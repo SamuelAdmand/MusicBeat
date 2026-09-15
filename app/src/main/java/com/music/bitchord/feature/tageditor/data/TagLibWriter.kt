@@ -24,49 +24,39 @@ object TagLibWriter {
     private const val TAG = "TagLibWriter"
 
     suspend fun readTags(context: Context, song: Song): SongTagData = withContext(Dispatchers.IO) {
-        val uri = getUriForSong(song)
-        if (uri == null) {
-            return@withContext fallbackSongTagData(song)
-        }
-
         try {
-            val pfd = openFileDescriptor(context, uri, "r")
-            if (pfd == null) {
-                return@withContext fallbackSongTagData(song)
-            }
+            val pfd = openFileDescriptor(context, song, "r") ?: return@withContext fallbackSongTagData(song)
 
             pfd.use { descriptor ->
-                val metadata = TagLib.getMetadata(descriptor.dup().detachFd(), readPictures = true)
-                val properties = metadata?.propertyMap.orEmpty()
-                val pictures = metadata?.pictures.orEmpty()
+                val metadata = TagLib.getMetadata(descriptor.dup().detachFd(), readPictures = false)
+                val propMap = metadata?.propertyMap.orEmpty()
+                val audioProps = TagLib.getAudioProperties(descriptor.dup().detachFd())
 
-                var coverBitmap: Bitmap? = null
-                val frontCover = pictures.firstOrNull { it.pictureType == "Front Cover" } ?: pictures.firstOrNull()
-                if (frontCover != null && frontCover.data.isNotEmpty()) {
-                    coverBitmap = BitmapFactory.decodeByteArray(frontCover.data, 0, frontCover.data.size)
+                fun get(key: String): String = propMap[key]?.firstOrNull()?.trim() ?: propMap[key.uppercase()]?.firstOrNull()?.trim() ?: ""
+
+                val coverPicture = TagLib.getFrontCover(descriptor.dup().detachFd())
+                val coverBitmap = coverPicture?.data?.let { bytes ->
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                 }
 
-                fun first(key: String): String =
-                    properties[key]?.firstOrNull()?.trim() ?: properties[key.uppercase()]?.firstOrNull()?.trim() ?: ""
-
                 SongTagData(
-                    title = first("TITLE").ifEmpty { song.title },
-                    album = first("ALBUM").ifEmpty { song.albumName ?: "" },
-                    artist = first("ARTIST").ifEmpty { song.artist },
-                    albumArtist = first("ALBUMARTIST"),
-                    composer = first("COMPOSER"),
-                    conductor = first("PRODUCER").ifEmpty { first("CONDUCTOR") },
-                    publisher = first("COPYRIGHT").ifEmpty { first("ORGANIZATION") },
-                    genre = first("GENRE"),
-                    year = first("DATE").ifEmpty { first("YEAR") },
-                    trackNumber = first("TRACKNUMBER"),
-                    trackTotal = first("TRACKTOTAL"),
-                    discNumber = first("DISCNUMBER"),
-                    discTotal = first("DISCTOTAL"),
-                    lyrics = first("LYRICS").ifEmpty { first("UNSYNCEDLYRICS") },
-                    lyricist = first("LYRICIST"),
-                    arranger = first("ARRANGER"),
-                    comment = first("COMMENT"),
+                    title = get("TITLE").ifEmpty { song.title },
+                    album = get("ALBUM").ifEmpty { song.albumName ?: "" },
+                    artist = get("ARTIST").ifEmpty { song.artist },
+                    albumArtist = get("ALBUMARTIST"),
+                    composer = get("COMPOSER"),
+                    conductor = get("PRODUCER").ifEmpty { get("CONDUCTOR") },
+                    publisher = get("COPYRIGHT").ifEmpty { get("LABEL") },
+                    genre = get("GENRE"),
+                    year = get("DATE").ifEmpty { get("YEAR") },
+                    trackNumber = get("TRACKNUMBER"),
+                    trackTotal = get("TRACKTOTAL"),
+                    discNumber = get("DISCNUMBER"),
+                    discTotal = get("DISCTOTAL"),
+                    lyrics = get("LYRICS").ifEmpty { get("UNSYNCEDLYRICS") },
+                    lyricist = get("LYRICIST"),
+                    arranger = get("ARRANGER"),
+                    comment = get("COMMENT"),
                     artworkBitmap = coverBitmap,
                 )
             }
@@ -77,14 +67,11 @@ object TagLibWriter {
     }
 
     suspend fun writeTags(context: Context, song: Song, data: SongTagData): Boolean = withContext(Dispatchers.IO) {
-        val uri = getUriForSong(song) ?: return@withContext false
-
         try {
-            val pfd = openFileDescriptor(context, uri, "rw") ?: return@withContext false
+            val pfd = openFileDescriptor(context, song, "rw") ?: return@withContext false
 
             pfd.use { descriptor ->
-                val fd = descriptor.dup().detachFd()
-                val currentProps = TagLib.getMetadata(fd, false)?.propertyMap ?: hashMapOf()
+                val currentProps = TagLib.getMetadata(descriptor.dup().detachFd(), false)?.propertyMap ?: hashMapOf()
 
                 val newMap = hashMapOf<String, Array<String>>()
                 newMap.putAll(currentProps)
@@ -93,6 +80,7 @@ object TagLibWriter {
                     val trimmed = value.trim()
                     if (trimmed.isEmpty()) {
                         newMap.remove(key)
+                        newMap.remove(key.uppercase())
                     } else {
                         newMap[key] = arrayOf(trimmed)
                     }
@@ -121,11 +109,11 @@ object TagLibWriter {
                     .filterValues { it.isNotEmpty() }
                     .mapValuesTo(hashMapOf()) { it.value }
 
-                val propsOk = TagLib.savePropertyMap(fd, cleanedMap)
+                val propsOk = TagLib.savePropertyMap(descriptor.dup().detachFd(), cleanedMap)
 
                 if (data.artworkChanged) {
                     if (data.artworkDeleted || data.artworkBitmap == null) {
-                        TagLib.savePictures(fd, arrayOf())
+                        TagLib.savePictures(descriptor.dup().detachFd(), arrayOf())
                     } else {
                         val stream = ByteArrayOutputStream()
                         data.artworkBitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
@@ -136,11 +124,12 @@ object TagLibWriter {
                             pictureType = "Front Cover",
                             mimeType = "image/jpeg",
                         )
-                        TagLib.savePictures(fd, arrayOf(pic))
+                        TagLib.savePictures(descriptor.dup().detachFd(), arrayOf(pic))
                     }
                 }
 
-                val filePath = resolveFilePath(context, uri) ?: song.localPath
+                val uri = getUriForSong(song)
+                val filePath = (if (uri != null) resolveFilePath(context, uri) else null) ?: song.localPath
                 if (!filePath.isNullOrBlank()) {
                     scanFile(context, filePath)
                 }
@@ -169,19 +158,40 @@ object TagLibWriter {
         }
     }
 
-    private fun openFileDescriptor(context: Context, uri: Uri, mode: String): ParcelFileDescriptor? = runCatching {
-        if (uri.scheme == "file") {
-            val file = File(uri.path ?: return null)
-            val pfdMode = if (mode.contains("w")) {
-                ParcelFileDescriptor.MODE_READ_WRITE
-            } else {
-                ParcelFileDescriptor.MODE_READ_ONLY
-            }
-            ParcelFileDescriptor.open(file, pfdMode)
-        } else {
-            context.contentResolver.openFileDescriptor(uri, mode)
+    private fun openFileDescriptor(context: Context, song: Song, mode: String): ParcelFileDescriptor? {
+        val uri = getUriForSong(song)
+        if (uri != null) {
+            val pfd = runCatching {
+                if (uri.scheme == "file") {
+                    val file = File(uri.path ?: return null)
+                    val pfdMode = if (mode.contains("w")) {
+                        ParcelFileDescriptor.MODE_READ_WRITE
+                    } else {
+                        ParcelFileDescriptor.MODE_READ_ONLY
+                    }
+                    ParcelFileDescriptor.open(file, pfdMode)
+                } else {
+                    context.contentResolver.openFileDescriptor(uri, mode)
+                }
+            }.getOrNull()
+            if (pfd != null) return pfd
         }
-    }.getOrNull()
+
+        if (!song.localPath.isNullOrBlank()) {
+            val file = File(song.localPath)
+            if (file.exists()) {
+                return runCatching {
+                    val pfdMode = if (mode.contains("w")) {
+                        ParcelFileDescriptor.MODE_READ_WRITE
+                    } else {
+                        ParcelFileDescriptor.MODE_READ_ONLY
+                    }
+                    ParcelFileDescriptor.open(file, pfdMode)
+                }.getOrNull()
+            }
+        }
+        return null
+    }
 
     private fun resolveFilePath(context: Context, uri: Uri): String? = runCatching {
         if (uri.scheme == "file") return uri.path

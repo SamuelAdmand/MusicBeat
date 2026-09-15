@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.InsertDriveFile
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -69,26 +69,28 @@ fun LyricsSourcePillSelector(
             val icon: ImageVector = when (source) {
                 LyricsEditorSource.Embedded -> Icons.Rounded.AudioFile
                 LyricsEditorSource.Downloaded -> Icons.Rounded.Download
-                LyricsEditorSource.File -> Icons.Rounded.InsertDriveFile
+                LyricsEditorSource.File -> Icons.AutoMirrored.Rounded.InsertDriveFile
             }
+
+            val buttonWeight = if (isSelected) 1.35f else 1f
 
             Surface(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(42.dp)
-                    .clip(RoundedCornerShape(21.dp))
+                    .weight(buttonWeight)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(20.dp))
                     .clickable(enabled = enabled) {
                         onSourceSelected(source)
                     },
-                shape = RoundedCornerShape(21.dp),
+                shape = RoundedCornerShape(20.dp),
                 color = containerColor,
                 border = if (!isSelected) {
                     BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 } else null,
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (isSelected) {
@@ -96,12 +98,12 @@ fun LyricsSourcePillSelector(
                             imageVector = icon,
                             contentDescription = null,
                             tint = contentColor,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(16.dp),
                         )
                     }
                     Text(
                         text = source.displayName,
-                        style = MaterialTheme.typography.labelLarge.copy(
+                        style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                         ),
                         color = contentColor,
