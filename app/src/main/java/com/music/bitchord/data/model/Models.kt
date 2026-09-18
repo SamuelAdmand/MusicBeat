@@ -1,5 +1,7 @@
 package com.music.bitchord.data.model
 
+import kotlin.math.abs
+
 /** A playable YouTube Music track. */
 data class Song(
     val videoId: String,
@@ -90,27 +92,82 @@ fun Song.artworkAt(px: Int): String? = thumbnailUrl.artworkAt(px)
 /**
  * Whether a row is the track the player is on, for the now-playing highlight.
  *
- * Title and credit, matched exactly, and nothing else. Every id a row could be
- * matched on instead is scoped to where the row came from and so lies when
- * asked across that boundary: a set-video-id names a slot in one playlist, and
- * two playlists hand the same one to unrelated tracks, which is what used to
- * light up a stranger's row while something else played. A video id is no
- * better across catalogues — the same recording arrives with a different id
- * from a local file, a download and a module source, and the highlight would
- * simply go missing.
- *
- * The cost is that name and credit are not unique: an album track and its
- * appearance on a compilation are one and the same to this, and both light up.
- * That is the trade the highlight is meant to make — it says "this is the song
- * you are hearing", not "this is the queue entry you are hearing".
- *
- * The one place that must not use this is the player's own queue, where the
- * entry, not the song, is what the row stands for — that list matches on
- * position.
+ * Compares exact unique identifiers (video ID, local file URI, and local file path)
+ * first. When comparing local tracks or tracks with explicit identifiers, prevents
+ * different files or different versions from incorrectly lighting up simultaneously.
+ * Metadata (title, artist, album, duration) is used to corroborate track identity
+ * across sources while ensuring distinct recordings or duplicate titles never collide.
  */
 fun Song.isSameTrackAs(other: Song?): Boolean {
     other ?: return false
-    return title == other.title && artist == other.artist
+    if (this === other) return true
+
+    // Check primary unique identifiers when available
+    val hasVideoId = videoId.isNotBlank()
+    val otherHasVideoId = other.videoId.isNotBlank()
+    if (hasVideoId && otherHasVideoId && videoId == other.videoId) {
+        // Same videoId: check local file paths/URIs if both specify them to prevent collisions
+        if (!localUri.isNullOrBlank() && !other.localUri.isNullOrBlank() && localUri != other.localUri) {
+            return false
+        }
+        if (!localPath.isNullOrBlank() && !other.localPath.isNullOrBlank() && localPath != other.localPath) {
+            return false
+        }
+        return true
+    }
+
+    if (!localUri.isNullOrBlank() && !other.localUri.isNullOrBlank() && localUri == other.localUri) {
+        return true
+    }
+
+    if (!localPath.isNullOrBlank() && !other.localPath.isNullOrBlank() && localPath == other.localPath) {
+        return true
+    }
+
+    // If both specify unique identifiers and they conflict, they are distinct tracks
+    if (hasVideoId && otherHasVideoId && videoId != other.videoId) {
+        return false
+    }
+    if (!localUri.isNullOrBlank() && !other.localUri.isNullOrBlank() && localUri != other.localUri) {
+        return false
+    }
+    if (!localPath.isNullOrBlank() && !other.localPath.isNullOrBlank() && localPath != other.localPath) {
+        return false
+    }
+
+    val thisIsLocal = !localUri.isNullOrBlank() || !localPath.isNullOrBlank() ||
+        videoId.startsWith("content://") || videoId.startsWith("file://")
+    val otherIsLocal = !other.localUri.isNullOrBlank() || !other.localPath.isNullOrBlank() ||
+        other.videoId.startsWith("content://") || other.videoId.startsWith("file://")
+    if (thisIsLocal != otherIsLocal) {
+        return false
+    }
+
+    // Core metadata must match
+    if (!title.equals(other.title, ignoreCase = true) || !artist.equals(other.artist, ignoreCase = true)) {
+        return false
+    }
+
+    // Album conflict: if both specify an album, distinct albums indicate distinct tracks
+    if (!albumName.isNullOrBlank() && !other.albumName.isNullOrBlank() &&
+        !albumName.equals(other.albumName, ignoreCase = true)
+    ) {
+        return false
+    }
+
+    // Duration conflict: if both specify valid durations, difference > 2 seconds indicates distinct versions
+    val d1 = durationMillis()
+    val d2 = other.durationMillis()
+    if (d1 > 0 && d2 > 0 && abs(d1 - d2) > 2_000) {
+        return false
+    }
+
+    // If both are local files on device but had differing/missing identifiers, don't mark as same
+    if (thisIsLocal || otherIsLocal) {
+        return false
+    }
+
+    return true
 }
 
 /**

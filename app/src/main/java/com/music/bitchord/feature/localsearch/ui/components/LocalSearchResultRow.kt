@@ -34,6 +34,7 @@ import com.music.bitchord.R
 import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
+import com.music.bitchord.data.model.isSameTrackAs
 import com.music.bitchord.feature.localsearch.domain.model.LocalSearchResult
 import com.music.bitchord.ui.components.PAGE_GUTTER
 import com.music.bitchord.ui.components.SongRow
@@ -55,7 +56,7 @@ fun LocalSearchResultRow(
     when (result) {
         is LocalSearchResult.Track -> {
             val song = result.song
-            val isCurrent = currentSong?.let { song.localUri == it.localUri || song.videoId == it.videoId } ?: false
+            val isCurrent = song.isSameTrackAs(currentSong)
             SongRow(
                 song = song,
                 isCurrent = isCurrent,

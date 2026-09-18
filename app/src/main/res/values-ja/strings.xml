@@ -176,9 +176,6 @@
     <string name="on_mobile_data">モバイルデータ接続時</string>
     <string name="in_use">使用中</string>
     <string name="blocking">ブロック中</string>
-    <string name="crossfade">クロスフェード</string>
-    <string name="crossfade_subtitle">1曲を次の曲へなめらかにつなげます</string>
-    <string name="automix">オートミックス [BETA]</string>
     <string name="skip_silence">無音をスキップ</string>
     <string name="skip_silence_subtitle">1秒より長い無音部分をカットします</string>
     <string name="equalizer">イコライザー</string>
@@ -538,15 +535,11 @@
     <plurals name="replay_song_count">
         <item quantity="other">%1$s曲</item>
     </plurals>
-    <string name="all_audio_folders">すべてのオーディオフォルダ</string>
-    <string name="local_music_folder">ローカルミュージックフォルダ</string>
     <string name="sort_music">音楽を並べ替え</string>
     <string name="sort_title_ascending">アルファベット順（A→Z）</string>
     <string name="sort_title_descending">アルファベット順（Z→A）</string>
     <string name="sort_date_added">追加日（新しい順）</string>
     <string name="sort_date_modified">更新日（新しい順）</string>
-    <string name="use_all_audio_folders">すべてのオーディオフォルダを使用</string>
-    <string name="use_all_audio_folders_subtitle">フォルダの制限を解除し、デバイス全体の音楽をスキャンします</string>
     <string name="album">アルバム</string>
     <string name="artist">アーティスト</string>
     <string name="playlist">プレイリスト</string>
@@ -561,13 +554,10 @@
     <string name="delete_playlist_confirmation">「%1$s」を削除しますか？もう一度タップして確定します。</string>
     <string name="delete_download_confirmation">「%1$s」をこのデバイスから削除しますか？もう一度タップして確定します。</string>
     <string name="running">実行中</string>
-    <string name="automix_analysis_status">オートミックス · この曲：%1$s · 次：%2$s</string>
     <string name="analysis_complete">分析済み</string>
     <string name="analysis_refining">分析済み、調整中…</string>
     <string name="analysis_in_progress">分析中…</string>
     <string name="waiting">待機中</string>
-    <string name="automix_enabled_subtitle">トラック自体からすべての切り替えのタイミングとブレンドを計算します。端末が熱くなったり再生が途切れたりする場合はオフにしてください。</string>
-    <string name="automix_disabled_subtitle">スライダーなしで切り替えのタイミングとブレンドを自動的に計算します。低スペック端末ではパフォーマンスが変わることがあります。</string>
     <string name="no_lyrics_sources_enabled">なし。歌詞は取得されません。</string>
     <string name="song_cache_large_subtitle">ダウンロードした音声を最大%1$sまでディスクに保持します。空き容量をかなり使用することがあります。</string>
     <string name="song_cache_limit_subtitle">即座にシークや再生ができるよう、ダウンロードした音声をディスクに保持します</string>

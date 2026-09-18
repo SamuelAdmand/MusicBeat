@@ -16,9 +16,11 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -56,11 +58,16 @@ import com.music.bitchord.R
 import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
+import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.ui.components.floatingtabbar.FloatingTabBar
 import com.music.bitchord.ui.components.floatingtabbar.FloatingTabBarDefaults
 import com.music.bitchord.ui.components.floatingtabbar.FloatingTabBarScrollConnection
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
 
 /**
  * The liquid glass navigation bar: the iOS 26 shape where the now playing
@@ -81,6 +88,7 @@ import com.music.bitchord.ui.haptics.rememberHaptics
  * [song] null means nothing is playing, and the accessory is simply absent: the
  * bar is then the tab pill and Search alone, and the collapse still works.
  */
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun GlassNavBar(
     tabs: List<BottomTab>,
@@ -94,31 +102,41 @@ fun GlassNavBar(
     onNext: () -> Unit,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier,
+    useGlass: Boolean = false,
+    hazeState: HazeState? = null,
 ) {
-    // Held for the same reason [tabs] is. The glass factory below closes over
-    // this shape, and a fresh RoundedCornerShape each pass means a fresh factory
-    // lambda, which the tab bar sees as a changed argument and recomposes on.
     val pillShape = remember { RoundedCornerShape(percent = 50) }
-    val contentColor = glassContentColor()
-    val selectedColor = contentColor
-    val unselectedColor = contentColor.copy(alpha = 0.65f)
+    val isDark = isSystemInDarkTheme()
+    val borderColor = if (isDark) GLASS_EDGE_COLOR else Color.Black.copy(alpha = 0.08f)
+    val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+
+    val contentColor = if (useGlass) glassContentColor() else MaterialTheme.colorScheme.onSurface
+    val selectedColor = if (useGlass) contentColor else MaterialTheme.colorScheme.primary
+    val unselectedColor = if (useGlass) contentColor.copy(alpha = 0.65f) else MaterialTheme.colorScheme.onSurfaceVariant
+    val indicatorColor = if (useGlass) glassIndicatorColor().copy(alpha = 0.5f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
     val haptics = rememberHaptics()
 
-    // The tab content lambdas below are captured once per contentKey and held
-    // until it changes, so a click handler that reached back to this call's
-    // `onTabSelected` would go stale the moment anything it closes over moved.
-    // Held through a state that is always current instead, which also keeps the
-    // handler out of the key.
     val currentOnTabSelected by rememberUpdatedState(onTabSelected)
-
-    // Search is the odd one out in the iOS 26 layout: a circle of its own beside
-    // the pill rather than a quarter of it. It is the last tab in BitChord's
-    // order, which is where the shape wants it anyway.
     val standaloneIndex = tabs.lastIndex
 
-    // A factory, not a value — see the note in FloatingTabBar's header. Each of
-    // the three surfaces gets its own glass modifier and so its own shape cache.
-    val glassSurface: @Composable () -> Modifier = { Modifier.liquidGlass(shape = pillShape) }
+    val surfaceModifier: @Composable () -> Modifier = if (useGlass) {
+        { Modifier.liquidGlass(shape = pillShape) }
+    } else {
+        {
+            if (reduceDynamicBlur || hazeState == null) {
+                Modifier
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, pillShape)
+                    .border(GLASS_EDGE_WIDTH, borderColor, pillShape)
+            } else {
+                Modifier
+                    .optimizedHazeEffect(
+                        state = hazeState,
+                        style = HazeMaterials.regular(MaterialTheme.colorScheme.surface),
+                    )
+                    .border(GLASS_EDGE_WIDTH, borderColor, pillShape)
+            }
+        }
+    }
 
     FloatingTabBar(
         selectedTabKey = selectedIndex,
@@ -128,7 +146,7 @@ fun GlassNavBar(
             .padding(horizontal = PAGE_GUTTER)
             .padding(bottom = 2.dp)
             .fillMaxWidth(),
-        tabBarContentModifier = glassSurface,
+        tabBarContentModifier = surfaceModifier,
         inlineAccessory = song?.let { current ->
             { accessoryModifier, _ ->
                 GlassNowPlaying(
@@ -140,7 +158,8 @@ fun GlassNavBar(
                     onPlayPause = onPlayPause,
                     onNext = onNext,
                     onExpand = onExpand,
-                    modifier = accessoryModifier.then(glassSurface()),
+                    useGlass = useGlass,
+                    modifier = accessoryModifier.then(surfaceModifier()),
                 )
             }
         },
@@ -155,22 +174,20 @@ fun GlassNavBar(
                     onPlayPause = onPlayPause,
                     onNext = onNext,
                     onExpand = onExpand,
-                    modifier = accessoryModifier.fillMaxWidth().then(glassSurface()),
+                    useGlass = useGlass,
+                    modifier = accessoryModifier.fillMaxWidth().then(surfaceModifier()),
                 )
             }
         },
-        // Transparent: the glass surface underneath is the background, and a
+        // Transparent: the surface underneath is the background, and a
         // colour over it would be the thing you saw instead of the backdrop.
         colors = FloatingTabBarDefaults.colors(
             backgroundColor = Color.Transparent,
             accessoryBackgroundColor = Color.Transparent,
-            indicatorColor = glassIndicatorColor().copy(alpha = 0.5f),
+            indicatorColor = indicatorColor,
         ),
-        // Flat, because the glass is not. Every surface here already draws its
-        // own [Shadow.Default] as part of the backdrop pass, and the library's
-        // Modifier.shadow on top of that is a second offscreen layer and a
-        // second shadow render for each of them — three at rest, six mid-fold,
-        // paying twice for a shadow you can only see once.
+        // Flat, because the surface is not. Every surface here already draws its
+        // own edge border and shadow pass.
         elevations = FloatingTabBarDefaults.elevations(
             inlineElevation = 0.dp,
             expandedElevation = 0.dp,
@@ -266,6 +283,7 @@ private fun GlassNowPlaying(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onExpand: () -> Unit,
+    useGlass: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val haptics = rememberHaptics()
@@ -311,12 +329,13 @@ private fun GlassNowPlaying(
                     vertical = if (isInline) 4.dp else 8.dp,
                 ),
         ) {
-            AsyncImage(
+                AsyncImage(
                 model = song.artworkAt(ROW_ART_PX),
                 contentDescription = null,
                 modifier = Modifier
                     .size(artSize)
                     .clip(RoundedCornerShape(if (isInline) 6.dp else 8.dp))
+                    .thumbnailBorder(RoundedCornerShape(if (isInline) 6.dp else 8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
             )
             Spacer(Modifier.width(if (isInline) 8.dp else 10.dp))
@@ -352,7 +371,7 @@ private fun GlassNowPlaying(
                     Text(
                         text = song.artist,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = contentColor.copy(alpha = 0.7f),
+                        color = if (useGlass) contentColor.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -361,7 +380,7 @@ private fun GlassNowPlaying(
             if (isLoading) {
                 Box(Modifier.size(glyphSlot), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
-                        color = contentColor,
+                        color = if (useGlass) contentColor else MaterialTheme.colorScheme.primary,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(if (isInline) 18.dp else 22.dp),
                     )

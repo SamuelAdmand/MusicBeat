@@ -176,9 +176,6 @@
     <string name="on_mobile_data">使用移动数据时</string>
     <string name="in_use">使用中</string>
     <string name="blocking">正在阻止</string>
-    <string name="crossfade">交叉淡入淡出</string>
-    <string name="crossfade_subtitle">将一首曲目渐变过渡到下一首</string>
-    <string name="automix">自动混音 [测试版]</string>
     <string name="skip_silence">跳过静音</string>
     <string name="skip_silence_subtitle">裁剪超过一秒的静音间隙</string>
     <string name="equalizer">均衡器</string>
@@ -538,15 +535,11 @@
     <plurals name="replay_song_count">
         <item quantity="other">%1$s 首歌曲</item>
     </plurals>
-    <string name="all_audio_folders">所有音频文件夹</string>
-    <string name="local_music_folder">本地音乐文件夹</string>
     <string name="sort_music">排序方式</string>
     <string name="sort_title_ascending">按字母顺序（A 到 Z）</string>
     <string name="sort_title_descending">按字母顺序（Z 到 A）</string>
     <string name="sort_date_added">添加日期（最新优先）</string>
     <string name="sort_date_modified">修改日期（最新优先）</string>
-    <string name="use_all_audio_folders">使用所有音频文件夹</string>
-    <string name="use_all_audio_folders_subtitle">取消文件夹限制，扫描整个设备上的音乐</string>
     <string name="album">专辑</string>
     <string name="artist">艺人</string>
     <string name="playlist">播放列表</string>
@@ -561,13 +554,10 @@
     <string name="delete_playlist_confirmation">删除“%1$s”？再次点按以确认。</string>
     <string name="delete_download_confirmation">从此设备中移除“%1$s”？再次点按以确认。</string>
     <string name="running">运行中</string>
-    <string name="automix_analysis_status">自动混音 · 当前歌曲：%1$s · 下一首：%2$s</string>
     <string name="analysis_complete">已分析</string>
     <string name="analysis_refining">已分析，正在优化…</string>
     <string name="analysis_in_progress">正在分析…</string>
     <string name="waiting">等待中</string>
-    <string name="automix_enabled_subtitle">根据曲目本身自动把控每次过渡的时机与混合效果。如果手机发热或播放卡顿，请将其关闭。</string>
-    <string name="automix_disabled_subtitle">自动把控过渡的时机与混合效果，无需手动调节。在性能较弱的设备上效果可能有所不同。</string>
     <string name="no_lyrics_sources_enabled">无。将不会获取歌词。</string>
     <string name="song_cache_large_subtitle">最多在磁盘上保留 %1$s 的已下载音频，这可能会占用较多可用空间。</string>
     <string name="song_cache_limit_subtitle">将已下载的音频保留在磁盘上，以便即时跳转和重播</string>

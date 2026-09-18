@@ -1174,11 +1174,7 @@ class PlaybackService : MediaLibraryService() {
             standby = { requireNotNull(spare) },
             onHandoff = ::adoptPlayer,
             analysisFor = { item -> trackAnalyzer.analysisFor(item.mediaId) },
-            requestAnalysis = { item, durationMs ->
-                item.localConfiguration?.uri?.let { uri ->
-                    trackAnalyzer.request(item.mediaId, uri, durationMs / 1000.0)
-                }
-            },
+            requestAnalysis = { _, _ -> },
             // "Incoming" and "outgoing" are roles, not players. The controller
             // only ever filters after the handoff, by which point the incoming
             // track is on the session player and the outgoing one is on the

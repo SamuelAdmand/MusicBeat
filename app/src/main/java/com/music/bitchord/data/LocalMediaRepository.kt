@@ -9,7 +9,6 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
-import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.Settings
 import com.music.bitchord.data.DebugLog as Log
@@ -48,12 +47,32 @@ object LocalMediaRepository {
     /**
      * Checks if the app has All Files Access (MANAGE_EXTERNAL_STORAGE).
      * On Android 11+ (API 30+), this allows tag editing and lyrics embedding without system prompts.
+     * On Android 10 and below, checks READ_EXTERNAL_STORAGE.
      */
-    fun hasAllFilesPermission(): Boolean {
+    fun hasAllFilesPermission(context: Context? = null): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             Environment.isExternalStorageManager()
+        } else if (context != null) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+            ) == PackageManager.PERMISSION_GRANTED
         } else {
             true
+        }
+    }
+
+    /**
+     * Returns an Intent to open system settings for All Files Access.
+     */
+    fun createAllFilesAccessIntent(context: Context): Intent {
+        val appIntent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+            data = Uri.fromParts("package", context.packageName, null)
+        }
+        return if (appIntent.resolveActivity(context.packageManager) != null) {
+            appIntent
+        } else {
+            Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
         }
     }
 
@@ -79,7 +98,7 @@ object LocalMediaRepository {
 
     /** Check if storage/audio permission is granted to query device local music. */
     fun hasStoragePermission(context: Context): Boolean {
-        if (hasAllFilesPermission()) return true
+        if (hasAllFilesPermission(context)) return true
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(
                 context,
@@ -301,9 +320,7 @@ object LocalMediaRepository {
                     val albumId = cursor.getLong(albumIdCol)
                     val durationMs = cursor.getLong(durationCol)
                     val path = cursor.getString(dataCol)
-
                     if (filterNonMusic && !isEligibleLocalMusic(durationMs, displayName, path)) continue
-                    if (!isInSelectedFolder(path, AppSettings.localMusicFolderUri.value)) continue
                     if (AppSettings.isFolderBlacklisted(path?.substringBeforeLast('/'))) continue
 
                     val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString()
@@ -384,40 +401,6 @@ object LocalMediaRepository {
             )
         }.sortedWith(compareBy({ it.isBlacklisted }, { it.name.lowercase(Locale.ROOT) }))
     }
-
-    /** Human-readable path for the folder setting without exposing provider internals. */
-    fun selectedFolderLabel(treeUri: String): String? = selectedFolder(treeUri)?.label
-
-    internal fun isInSelectedFolder(path: String?, treeUri: String): Boolean {
-        if (treeUri.isBlank()) return true
-        val folder = selectedFolder(treeUri) ?: return false
-        val candidate = path?.normalizedPath() ?: return false
-        return candidate == folder.absolutePath || candidate.startsWith("${folder.absolutePath}/")
-    }
-
-    private data class SelectedFolder(val absolutePath: String, val label: String)
-
-    private fun selectedFolder(treeUri: String): SelectedFolder? = runCatching {
-        val documentId = DocumentsContract.getTreeDocumentId(Uri.parse(treeUri))
-        if (documentId.startsWith("raw:")) {
-            val path = documentId.removePrefix("raw:").normalizedPath()
-            return@runCatching SelectedFolder(path, path.substringAfterLast('/'))
-        }
-        val volume = documentId.substringBefore(':')
-        val relative = documentId.substringAfter(':', "").trim('/')
-        val volumeRoot = if (volume.equals("primary", ignoreCase = true)) {
-            "/storage/emulated/0"
-        } else {
-            "/storage/$volume"
-        }
-        SelectedFolder(
-            absolutePath = listOf(volumeRoot, relative).filter { it.isNotBlank() }.joinToString("/").normalizedPath(),
-            label = relative.ifBlank { volume },
-        )
-    }.getOrNull()
-
-    private fun String.normalizedPath(): String =
-        replace('\\', '/').trimEnd('/').lowercase(Locale.ROOT)
 
     /**
      * MediaStore's `IS_MUSIC` flag is advisory and often includes notification

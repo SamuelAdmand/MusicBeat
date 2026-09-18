@@ -89,8 +89,13 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.music.bitchord.feature.localmusic.ui.components.AllFilesPermissionDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -195,6 +200,9 @@ import com.music.bitchord.ui.player.dockedPlayerAvailable
 import com.music.bitchord.ui.player.dockedPlayerWidth
 import com.music.bitchord.data.settings.SongSort
 import com.music.bitchord.feature.lyricseditor.ui.LyricsEditorScreen
+import com.music.bitchord.feature.localsongactions.ui.LocalSongActionsHelper
+import com.music.bitchord.feature.localsongactions.ui.components.LocalAddToPlaylistSheet
+import com.music.bitchord.feature.localsongactions.ui.components.LocalSongActionsSheet
 import com.music.bitchord.feature.localsongactions.ui.components.LocalSongDetailsSheet
 import com.music.bitchord.feature.tageditor.ui.TagEditorScreen
 import androidx.compose.ui.window.Dialog
@@ -345,6 +353,8 @@ private fun BitChordApp(
     // solid (see [Modifier.liquidGlass]) and the whole-page layer recording
     // below goes with them, which is the part that costs a draw pass.
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val classicNavBar by AppSettings.classicNavBar.collectAsStateWithLifecycle()
+    val useCollapsibleNavBar = !classicNavBar
     val glassSamplesBackdrop = glassActive && !reduceDynamicBlur
     // What folds [GlassNavBar] between its expanded and inline shapes. Held here
     // rather than inside the bar because the page's scroll is what drives it,
@@ -482,7 +492,6 @@ private fun BitChordApp(
     // stale counts and a missing row in three places rather than one. So it is
     // taken again whenever the record of what's on disk changes.
     val savedDownloads by Downloads.saved.collectAsStateWithLifecycle()
-    val localMusicFolderUri by AppSettings.localMusicFolderUri.collectAsStateWithLifecycle()
     val filterNonMusicAudio by AppSettings.filterNonMusicAudio.collectAsStateWithLifecycle()
     val librarySort by AppSettings.librarySort.collectAsStateWithLifecycle()
     // The releases those files were asked for as — read here rather than in the
@@ -514,7 +523,7 @@ private fun BitChordApp(
             viewModel.reloadLocalDetail(open)
         }
     }
-    LaunchedEffect(localMusicFolderUri, filterNonMusicAudio) {
+    LaunchedEffect(filterNonMusicAudio) {
         if (detail?.browseId == "local:all") {
             viewModel.reloadLocalDetail("local:all")
         }
@@ -553,6 +562,14 @@ private fun BitChordApp(
     var hasStoragePermission by remember {
         mutableStateOf(LocalMediaRepository.hasStoragePermission(context))
     }
+    var hasAllFilesPermission by remember {
+        mutableStateOf(LocalMediaRepository.hasAllFilesPermission(context))
+    }
+    val allFilesAsked by AppSettings.allFilesPermissionAsked.collectAsStateWithLifecycle()
+    var showFirstLaunchPermissionDialog by rememberSaveable {
+        mutableStateOf(!allFilesAsked && !LocalMediaRepository.hasAllFilesPermission(context))
+    }
+
     val localSongsState by viewModel.localSongs.collectAsStateWithLifecycle()
     val localSongs = (localSongsState as? UiState.Success)?.data.orEmpty()
     val localEmptyMessage = (localSongsState as? UiState.Error)?.message
@@ -561,6 +578,31 @@ private fun BitChordApp(
         if (LocalMediaRepository.hasStoragePermission(context)) {
             hasStoragePermission = true
             viewModel.loadLocalMusic()
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val currentStorage = LocalMediaRepository.hasStoragePermission(context)
+                val currentAllFiles = LocalMediaRepository.hasAllFilesPermission(context)
+                hasAllFilesPermission = currentAllFiles
+                if (currentStorage != hasStoragePermission) {
+                    hasStoragePermission = currentStorage
+                    if (currentStorage) {
+                        viewModel.reloadLocalDetail("local:all")
+                        viewModel.loadLocalMusic()
+                    }
+                }
+                if (currentAllFiles) {
+                    showFirstLaunchPermissionDialog = false
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -1062,6 +1104,17 @@ private fun BitChordApp(
                 .show()
         }
     }
+    val allFilesLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        val granted = LocalMediaRepository.hasStoragePermission(context)
+        hasStoragePermission = granted
+        hasAllFilesPermission = LocalMediaRepository.hasAllFilesPermission(context)
+        if (granted) {
+            viewModel.reloadLocalDetail("local:all")
+            viewModel.loadLocalMusic()
+        }
+    }
     val mediaPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -1081,17 +1134,31 @@ private fun BitChordApp(
         }
         mediaPermissionLauncher.launch(perm)
     }
+    val requestAllFilesAccess: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching {
+                val intent = LocalMediaRepository.createAllFilesAccessIntent(context)
+                allFilesLauncher.launch(intent)
+            }.onFailure {
+                LocalMediaRepository.requestAllFilesAccess(context)
+            }
+        } else {
+            requestAudioPermission()
+        }
+    }
+    val requestDefaultPermission: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            requestAllFilesAccess()
+        } else {
+            requestAudioPermission()
+        }
+    }
     // Shared by the Library tab itself and by a shelf's "Show all" page, so a
     // card opens the same way from either.
     val onLibraryItemClick: (ShelfItem) -> Unit = { item ->
         item.browseId?.let { id ->
             if (id == "local:all" && !LocalMediaRepository.hasStoragePermission(context)) {
-                val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    Manifest.permission.READ_MEDIA_AUDIO
-                } else {
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                }
-                mediaPermissionLauncher.launch(perm)
+                requestDefaultPermission()
             }
             // Left set rather than cleared: a card opened from a shelf's
             // "Show all" page stacks a detail page over it exactly as one
@@ -1542,7 +1609,7 @@ private fun BitChordApp(
                     modifier = Modifier
                         .hazeSource(hazeState)
                         .then(
-                            if (glassActive) {
+                            if (useCollapsibleNavBar) {
                                 Modifier
                                     .then(
                                         if (glassSamplesBackdrop) {
@@ -1757,7 +1824,10 @@ private fun BitChordApp(
                     } else when (key.removePrefix(TAB_KEY).toIntOrNull() ?: selectedTab) {
                         TAB_SONGS -> if (!hasStoragePermission) {
                             Box(modifier = Modifier.fillMaxSize().padding(listPadding), contentAlignment = Alignment.Center) {
-                                LocalPermissionCard(onRequestPermission = requestAudioPermission)
+                                LocalPermissionCard(
+                                    onRequestPermission = requestDefaultPermission,
+                                    onFallbackPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) requestAudioPermission else null,
+                                )
                             }
                         } else {
                             LocalMusicScreen(
@@ -1796,7 +1866,10 @@ private fun BitChordApp(
                         }
                         TAB_ALBUMS -> if (!hasStoragePermission) {
                             Box(modifier = Modifier.fillMaxSize().padding(listPadding), contentAlignment = Alignment.Center) {
-                                LocalPermissionCard(onRequestPermission = requestAudioPermission)
+                                LocalPermissionCard(
+                                    onRequestPermission = requestDefaultPermission,
+                                    onFallbackPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) requestAudioPermission else null,
+                                )
                             }
                         } else {
                             LocalMusicScreen(
@@ -1835,7 +1908,10 @@ private fun BitChordApp(
                         }
                         TAB_ARTISTS -> if (!hasStoragePermission) {
                             Box(modifier = Modifier.fillMaxSize().padding(listPadding), contentAlignment = Alignment.Center) {
-                                LocalPermissionCard(onRequestPermission = requestAudioPermission)
+                                LocalPermissionCard(
+                                    onRequestPermission = requestDefaultPermission,
+                                    onFallbackPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) requestAudioPermission else null,
+                                )
                             }
                         } else {
                             LocalMusicScreen(
@@ -1874,7 +1950,10 @@ private fun BitChordApp(
                         }
                         TAB_FOLDERS -> if (!hasStoragePermission) {
                             Box(modifier = Modifier.fillMaxSize().padding(listPadding), contentAlignment = Alignment.Center) {
-                                LocalPermissionCard(onRequestPermission = requestAudioPermission)
+                                LocalPermissionCard(
+                                    onRequestPermission = requestDefaultPermission,
+                                    onFallbackPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) requestAudioPermission else null,
+                                )
                             }
                         } else {
                             LocalMusicScreen(
@@ -1913,7 +1992,10 @@ private fun BitChordApp(
                         }
                         TAB_SEARCH -> if (!hasStoragePermission) {
                             Box(modifier = Modifier.fillMaxSize().padding(listPadding), contentAlignment = Alignment.Center) {
-                                LocalPermissionCard(onRequestPermission = requestAudioPermission)
+                                LocalPermissionCard(
+                                    onRequestPermission = requestDefaultPermission,
+                                    onFallbackPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) requestAudioPermission else null,
+                                )
                             }
                         } else {
                             LocalSearchScreen(
@@ -2061,11 +2143,10 @@ private fun BitChordApp(
                     }
                 }
 
-                if (glassActive) {
-                    // Liquid glass replaces the two stacked bars with the single
-                    // component they are stacked to imitate: the now playing
-                    // controls dock into the tab bar rather than riding above it,
-                    // and the pair folds together on scroll. See [GlassNavBar].
+                if (useCollapsibleNavBar) {
+                    // Collapsible floating bar replaces the two stacked bars with a
+                    // unified component: now playing controls dock into the tab bar,
+                    // and the pair folds together on scroll. Works with or without liquid glass.
                     GlassNavBar(
                         tabs = tabs,
                         selectedIndex = selectedTab,
@@ -2079,6 +2160,8 @@ private fun BitChordApp(
                         },
                         onNext = { controller?.seekToNextMediaItem() },
                         onExpand = { showNowPlaying = true },
+                        useGlass = glassActive,
+                        hazeState = hazeState,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .widthIn(max = FLOATING_BAR_MAX_WIDTH)
@@ -2205,6 +2288,8 @@ private fun BitChordApp(
             if (isLocal) {
                 var showTagEditor by remember { mutableStateOf(false) }
                 var showLyricsEditor by remember { mutableStateOf(false) }
+                var showDetailsSheet by remember { mutableStateOf(false) }
+                var showAddToPlaylist by remember { mutableStateOf(false) }
 
                 if (showTagEditor) {
                     Dialog(
@@ -2253,12 +2338,62 @@ private fun BitChordApp(
                             },
                         )
                     }
-                } else {
+                } else if (showDetailsSheet) {
                     LocalSongDetailsSheet(
                         song = song,
+                        onDismissRequest = {
+                            showDetailsSheet = false
+                            songActions = null
+                        },
+                        onLyricsEditorClick = {
+                            showDetailsSheet = false
+                            showLyricsEditor = true
+                        },
+                        onTagEditorClick = {
+                            showDetailsSheet = false
+                            showTagEditor = true
+                        },
+                    )
+                } else if (showAddToPlaylist) {
+                    LocalAddToPlaylistSheet(
+                        song = song,
+                        onDismissRequest = {
+                            showAddToPlaylist = false
+                            songActions = null
+                        },
+                    )
+                } else {
+                    LocalSongActionsSheet(
+                        song = song,
                         onDismissRequest = { songActions = null },
-                        onLyricsEditorClick = { showLyricsEditor = true },
-                        onTagEditorClick = { showTagEditor = true },
+                        onPlayAgain = {
+                            songActions = null
+                            if (playerSong?.videoId == song.videoId ||
+                                controller?.currentMediaItem?.mediaId == song.videoId ||
+                                (song.localUri != null && controller?.currentMediaItem?.mediaId == song.localUri)
+                            ) {
+                                controller?.seekTo(0L)
+                                controller?.play()
+                            } else {
+                                controller?.playSongs(listOf(song), 0)
+                            }
+                        },
+                        onAddToPlaylist = {
+                            showAddToPlaylist = true
+                        },
+                        onEditLyrics = {
+                            showLyricsEditor = true
+                        },
+                        onTagEditor = {
+                            showTagEditor = true
+                        },
+                        onShare = {
+                            songActions = null
+                            LocalSongActionsHelper.shareSong(context, song)
+                        },
+                        onDetails = {
+                            showDetailsSheet = true
+                        },
                     )
                 }
             } else {
@@ -2645,6 +2780,14 @@ private fun BitChordApp(
             )
         }
 
+        if (showLyricsSources) {
+            BackHandler { showLyricsSources = false }
+            LyricsSourcesDialog(
+                hazeState = hazeState,
+                onDismiss = { showLyricsSources = false },
+            )
+        }
+
         if (showListenBrainzLogin) {
             var tokenInput by remember { mutableStateOf(listenBrainzToken) }
             ListenBrainzTokenAlert(
@@ -2699,6 +2842,27 @@ private fun BitChordApp(
                     }
                 },
                 onDismiss = { if (!lastfmLoading) showLastfmLogin = false },
+            )
+        }
+
+        if (showFirstLaunchPermissionDialog) {
+            AllFilesPermissionDialog(
+                onGrantAllFiles = {
+                    AppSettings.setAllFilesPermissionAsked(true)
+                    showFirstLaunchPermissionDialog = false
+                    requestAllFilesAccess()
+                },
+                onDismissRequest = {
+                    AppSettings.setAllFilesPermissionAsked(true)
+                    showFirstLaunchPermissionDialog = false
+                },
+                onBasicAudioFallback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    {
+                        AppSettings.setAllFilesPermissionAsked(true)
+                        showFirstLaunchPermissionDialog = false
+                        requestAudioPermission()
+                    }
+                } else null,
             )
         }
 

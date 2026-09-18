@@ -180,9 +180,6 @@
     <string name="on_mobile_data">Bei mobilen Daten</string>
     <string name="in_use">In Verwendung</string>
     <string name="blocking">Blockierend</string>
-    <string name="crossfade">Überblendung</string>
-    <string name="crossfade_subtitle">Blendet einen Track in den nächsten über</string>
-    <string name="automix">Automix [BETA]</string>
     <string name="skip_silence">Stille überspringen</string>
     <string name="skip_silence_subtitle">Kürzt Pausen länger als eine Sekunde</string>
     <string name="equalizer">Equalizer</string>
@@ -555,15 +552,11 @@
         <item quantity="one">%1$s Song</item>
         <item quantity="other">%1$s Songs</item>
     </plurals>
-    <string name="all_audio_folders">Alle Audioordner</string>
-    <string name="local_music_folder">Lokaler Musikordner</string>
     <string name="sort_music">Musik sortieren</string>
     <string name="sort_title_ascending">Alphabetisch (A bis Z)</string>
     <string name="sort_title_descending">Alphabetisch (Z bis A)</string>
     <string name="sort_date_added">Hinzugefügt (neueste zuerst)</string>
     <string name="sort_date_modified">Geändert (neueste zuerst)</string>
-    <string name="use_all_audio_folders">Alle Audioordner verwenden</string>
-    <string name="use_all_audio_folders_subtitle">Entfernt die Ordnerbegrenzung und durchsucht Musik auf dem gesamten Gerät</string>
     <string name="album">Album</string>
     <string name="artist">Künstler</string>
     <string name="playlist">Playlist</string>
@@ -578,13 +571,10 @@
     <string name="delete_playlist_confirmation">„%1$s“ löschen? Erneut tippen, um zu bestätigen.</string>
     <string name="delete_download_confirmation">„%1$s“ von diesem Gerät entfernen? Erneut tippen, um zu bestätigen.</string>
     <string name="running">Läuft</string>
-    <string name="automix_analysis_status">Automix · dieser Song: %1$s · nächster: %2$s</string>
     <string name="analysis_complete">analysiert</string>
     <string name="analysis_refining">analysiert, wird verfeinert…</string>
     <string name="analysis_in_progress">wird analysiert…</string>
     <string name="waiting">wartet</string>
-    <string name="automix_enabled_subtitle">Timing und Überblendung jedes Übergangs werden direkt aus den Titeln bestimmt. Schalte dies aus, wenn das Telefon heiß wird oder die Wiedergabe stockt.</string>
-    <string name="automix_disabled_subtitle">Timing und Überblendung von Übergängen erfolgen automatisch, ohne Regler. Die Leistung kann auf langsameren Geräten variieren.</string>
     <string name="no_lyrics_sources_enabled">Keine. Songtexte werden nicht abgerufen.</string>
     <string name="song_cache_large_subtitle">Behält bis zu %1$s heruntergeladenes Audio auf dem Speicher. Das kann einen spürbaren Teil deines freien Speicherplatzes beanspruchen.</string>
     <string name="song_cache_limit_subtitle">Behält heruntergeladenes Audio auf dem Speicher für sofortiges Springen und Wiederholen</string>

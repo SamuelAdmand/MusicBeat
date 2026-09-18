@@ -180,9 +180,6 @@
     <string name="on_mobile_data">En données mobiles</string>
     <string name="in_use">Utilisé</string>
     <string name="blocking">Bloquant</string>
-    <string name="crossfade">Fondu enchaîné</string>
-    <string name="crossfade_subtitle">Fond une piste dans la suivante</string>
-    <string name="automix">Automix [BÊTA]</string>
     <string name="skip_silence">Ignorer les silences</string>
     <string name="skip_silence_subtitle">Coupe les silences de plus d\'une seconde</string>
     <string name="equalizer">Égaliseur</string>
@@ -555,15 +552,11 @@
         <item quantity="one">%1$s chanson</item>
         <item quantity="other">%1$s chansons</item>
     </plurals>
-    <string name="all_audio_folders">Tous les dossiers audio</string>
-    <string name="local_music_folder">Dossier de musique locale</string>
     <string name="sort_music">Trier la musique</string>
     <string name="sort_title_ascending">Alphabétique (A à Z)</string>
     <string name="sort_title_descending">Alphabétique (Z à A)</string>
     <string name="sort_date_added">Date d\'ajout (plus récent d\'abord)</string>
     <string name="sort_date_modified">Date de modification (plus récent d\'abord)</string>
-    <string name="use_all_audio_folders">Utiliser tous les dossiers audio</string>
-    <string name="use_all_audio_folders_subtitle">Supprime la limite de dossier et analyse la musique sur tout l\'appareil</string>
     <string name="album">album</string>
     <string name="artist">artiste</string>
     <string name="playlist">playlist</string>
@@ -578,13 +571,10 @@
     <string name="delete_playlist_confirmation">Supprimer “%1$s” ? Appuyez de nouveau pour confirmer.</string>
     <string name="delete_download_confirmation">Retirer “%1$s” de cet appareil ? Appuyez de nouveau pour confirmer.</string>
     <string name="running">En cours</string>
-    <string name="automix_analysis_status">Automix · cette chanson : %1$s · suivante : %2$s</string>
     <string name="analysis_complete">analysée</string>
     <string name="analysis_refining">analysée, affinage…</string>
     <string name="analysis_in_progress">analyse en cours…</string>
     <string name="waiting">en attente</string>
-    <string name="automix_enabled_subtitle">Chronomètre et mélange chaque transition à partir des morceaux eux-mêmes. Désactivez-le si le téléphone chauffe ou si la lecture saccade.</string>
-    <string name="automix_disabled_subtitle">Chronomètre et mélange les transitions automatiquement, sans curseur. Les performances peuvent varier sur les appareils plus lents.</string>
     <string name="no_lyrics_sources_enabled">Aucune. Les paroles ne seront pas récupérées.</string>
     <string name="song_cache_large_subtitle">Conserve jusqu\'à %1$s d\'audio téléchargé sur le disque. Cela peut occuper une part importante de votre espace libre.</string>
     <string name="song_cache_limit_subtitle">Conserve l\'audio téléchargé sur le disque pour une recherche instantanée et de nouvelles écoutes</string>

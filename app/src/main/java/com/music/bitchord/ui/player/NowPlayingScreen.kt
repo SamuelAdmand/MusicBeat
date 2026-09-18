@@ -1511,16 +1511,6 @@ fun NowPlayingScreen(
             // needs these before the seek bar does.
             val showNerdStats by AppSettings.showNerdStats.collectAsStateWithLifecycle()
             val nerdStats by NerdStats.current.collectAsStateWithLifecycle()
-            // Hoisted alongside the other two rather than read where it is drawn:
-            // the stats block is inside a condition that flips as the sleeve
-            // collapses, and re-subscribing to a flow on every frame of that
-            // collapse is a waste of a subscription.
-            val smartFadeOn by AppSettings.smartFadeEnabled.collectAsStateWithLifecycle()
-            // The scrubber retains its existing transition sheen while a real
-            // Smart Mix is active. This state is independent from the removed
-            // header icon.
-            val mixing by AppSettings.smartMixInProgress.collectAsStateWithLifecycle()
-            val smartAnalysis by AppSettings.smartAnalysis.collectAsStateWithLifecycle()
             // Height the artwork block below turns out not to need, spent by the
             // controls at the foot of the screen. Filled in from inside the box,
             // where the sleeve's real size is known; see [lastControlSpread].
@@ -1863,34 +1853,6 @@ fun NowPlayingScreen(
                                     textAlign = TextAlign.Center,
                                 )
                             }
-                            // Only when Automix is actually switched on:
-                            // otherwise this would report on analysis nothing is
-                            // going to use, which is noise rather than a stat.
-                            if (smartFadeOn) {
-                                Text(
-                                    // Both sides always named, even when they
-                                    // agree, so the line reads the same way every
-                                    // time and the eye can find the half it wants
-                                    // without re-parsing the sentence.
-                                    text = if (song.isVideoOrigin) {
-                                        stringResource(R.string.automix_not_supported_video)
-                                    } else {
-                                        stringResource(
-                                            R.string.automix_analysis_status,
-                                            smartAnalysis.current.localizedLabel(),
-                                            smartAnalysis.next.localizedLabel(),
-                                        )
-                                    },
-                                    style = nerdStyle,
-                                    // Dimmer than the measured line above it: that
-                                    // one describes the audio, this one describes
-                                    // the app, and the ranking should show.
-                                    color = Color.White.copy(alpha = 0.5f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
                         }
                     }
                 }
@@ -2151,7 +2113,6 @@ fun NowPlayingScreen(
                     }
                 }
             }
-            val transitionWindow by AppSettings.smartTransitionWindow.collectAsStateWithLifecycle()
             ThinSlider(
                 value = shown,
                 onValueChange = {
@@ -2167,17 +2128,6 @@ fun NowPlayingScreen(
                     onSeekFraction(scrubValue)
                     scrubbing = false
                 },
-                // Suppressed under the finger: the bar is already thickening and
-                // tracking a drag, and a sheen sweeping through that reads as a
-                // rendering glitch rather than as a signal.
-                mixing = mixing && !scrubbing,
-                // Hidden while scrubbing for the same reason as the sheen: the
-                // planner is still describing where the transition *would* be,
-                // and a marker sitting under a finger that is moving the
-                // playhead invites reading it as a drag target.
-                transitionWindow = transitionWindow
-                    ?.takeIf { !scrubbing && it.end > it.start }
-                    ?.let { it.start..it.end },
             )
             val wifiQuality by AppSettings.audioQualityWifi.collectAsStateWithLifecycle()
             val cellularQuality by AppSettings.audioQualityCellular.collectAsStateWithLifecycle()

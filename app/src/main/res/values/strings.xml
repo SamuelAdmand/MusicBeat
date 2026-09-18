@@ -201,18 +201,6 @@
     <string name="on_mobile_data">On mobile data</string>
     <string name="in_use">In use</string>
     <string name="blocking">Blocking</string>
-    <string name="crossfade">Crossfade</string>
-    <string name="crossfade_subtitle">Blends one track into the next</string>
-    <string name="automix">Automix [BETA]</string>
-    <string name="automix_performance">Automix performance</string>
-    <string name="automix_performance_subtitle">Sets how much CPU background analysis may use</string>
-    <string name="automix_performance_warning">Higher performance analyses tracks faster, but can use more battery and make the phone warmer.</string>
-    <string name="automix_mode_efficient">Efficient</string>
-    <string name="automix_mode_efficient_subtitle">1 thread · lowest heat and battery use · analysis may take longer</string>
-    <string name="automix_mode_balanced">Balanced</string>
-    <string name="automix_mode_balanced_subtitle">2 threads · recommended balance of speed, heat and battery</string>
-    <string name="automix_mode_performance">Performance</string>
-    <string name="automix_mode_performance_subtitle">4 threads · fastest analysis · higher heat and battery use</string>
     <string name="skip_silence">Skip silence</string>
     <string name="skip_silence_subtitle">Trim gaps longer than a second</string>
     <string name="equalizer">Equalizer</string>
@@ -227,6 +215,8 @@
     <string name="liquid_glass">Liquid Glass</string>
     <string name="liquid_glass_subtitle">Real refracting glass on the floating nav bar. Android 12+ only; uses more GPU.</string>
     <string name="liquid_glass_unavailable">Requires Android 12 or newer</string>
+    <string name="classic_nav_bar">Classic navigation bar</string>
+    <string name="classic_nav_bar_subtitle">Use separate stacked mini player and bottom bar instead of collapsible floating bar</string>
     <string name="full_screen_cover_art">Full-screen cover art</string>
     <string name="legacy_mesh_gradient">Legacy mesh gradient</string>
     <string name="legacy_mesh_gradient_subtitle">Brings back the drifting colour blobs behind the player from v1.5</string>
@@ -598,8 +588,6 @@
         <item quantity="one">%1$s song</item>
         <item quantity="other">%1$s songs</item>
     </plurals>
-    <string name="all_audio_folders">All audio folders</string>
-    <string name="local_music_folder">Local music folder</string>
     <string name="sort_music">Sort music</string>
     <string name="sort_title_ascending">Alphabetical (A to Z)</string>
     <string name="sort_title_descending">Alphabetical (Z to A)</string>
@@ -610,8 +598,6 @@
     <string name="sort_default">Default order</string>
     <string name="sort_library">Sort</string>
     <string name="sort_songs">Sort songs</string>
-    <string name="use_all_audio_folders">Use all audio folders</string>
-    <string name="use_all_audio_folders_subtitle">Remove the folder limit and scan music across the device</string>
     <string name="album">album</string>
     <string name="artist">artist</string>
     <string name="playlist">playlist</string>
@@ -627,14 +613,10 @@
     <string name="delete_playlist_confirmation">Delete “%1$s”? Tap again to confirm.</string>
     <string name="delete_download_confirmation">Remove “%1$s” from this device? Tap again to confirm.</string>
     <string name="running">Running</string>
-    <string name="automix_analysis_status">Automix · this song: %1$s · next: %2$s</string>
-    <string name="automix_not_supported_video">Automix not supported on video songs</string>
     <string name="analysis_complete">analysed</string>
     <string name="analysis_refining">analysed, refining…</string>
     <string name="analysis_in_progress">analysing…</string>
     <string name="waiting">waiting</string>
-    <string name="automix_enabled_subtitle">Times and blends every transition from the tracks themselves. Turn it off if the phone gets hot or playback stutters.</string>
-    <string name="automix_disabled_subtitle">Times and blends transitions automatically, without a slider. Performance may vary on slower devices.</string>
     <string name="no_lyrics_sources_enabled">None. Lyrics will not be fetched.</string>
     <string name="song_cache_large_subtitle">Keeps up to %1$s of downloaded audio on disk. This can take a noticeable share of your free space.</string>
     <string name="song_cache_limit_subtitle">Keeps downloaded audio on disk for instant seeking and replays</string>

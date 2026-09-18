@@ -23,8 +23,6 @@ import androidx.compose.material.icons.automirrored.rounded.Notes
 import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.PlayCircle
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -33,7 +31,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -44,7 +41,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,11 +56,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
-import com.music.bitchord.feature.localsongactions.data.LocalPlayStatsStore
 import com.music.bitchord.feature.localsongactions.data.LocalSongMetadataRetriever
-import com.music.bitchord.feature.localsongactions.domain.model.LocalPlayStats
 import com.music.bitchord.feature.localsongactions.domain.model.LocalSongFullMetadata
-import kotlinx.coroutines.launch
 
 /**
  * Modal bottom sheet displaying rich metadata, play statistics, and file details
@@ -80,18 +73,13 @@ fun LocalSongDetailsSheet(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var metadata by remember { mutableStateOf<LocalSongFullMetadata?>(null) }
-    var playStats by remember { mutableStateOf(LocalPlayStats.Empty) }
     var isLoading by remember { mutableStateOf(true) }
-
-    val songId = song.localUri ?: song.videoId
 
     LaunchedEffect(song) {
         isLoading = true
-        playStats = LocalPlayStatsStore.getStats(context, songId)
         metadata = LocalSongMetadataRetriever.retrieve(context, song)
         isLoading = false
     }
@@ -127,17 +115,6 @@ fun LocalSongDetailsSheet(
 
             item {
                 MetadataCard(metadata = metadata)
-            }
-
-            item {
-                PlayInfoCard(
-                    playStats = playStats,
-                    onReset = {
-                        coroutineScope.launch {
-                            playStats = LocalPlayStatsStore.resetStats(context, songId)
-                        }
-                    },
-                )
             }
 
             if (metadata != null) {
@@ -309,53 +286,6 @@ private fun MetadataCard(
     }
 }
 
-@Composable
-private fun PlayInfoCard(
-    playStats: LocalPlayStats,
-    onReset: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                SectionHeader(
-                    icon = Icons.Rounded.PlayCircle,
-                    title = "Play info",
-                )
-                IconButton(
-                    onClick = onReset,
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Refresh,
-                        contentDescription = "Reset play info",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-
-            KeyValueRow(key = "Played", value = playStats.playedText)
-            KeyValueRow(key = "Skipped", value = playStats.skippedText)
-            KeyValueRow(key = "Last played", value = playStats.lastPlayedText)
-        }
-    }
-}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

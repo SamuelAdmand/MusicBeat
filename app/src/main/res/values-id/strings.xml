@@ -176,9 +176,6 @@
     <string name="on_mobile_data">Saat data seluler</string>
     <string name="in_use">Digunakan</string>
     <string name="blocking">Memblokir</string>
-    <string name="crossfade">Crossfade</string>
-    <string name="crossfade_subtitle">Memadukan satu trek ke trek berikutnya</string>
-    <string name="automix">Automix [BETA]</string>
     <string name="skip_silence">Lewati keheningan</string>
     <string name="skip_silence_subtitle">Memotong jeda lebih dari satu detik</string>
     <string name="equalizer">Equalizer</string>
@@ -538,15 +535,11 @@
     <plurals name="replay_song_count">
         <item quantity="other">%1$s lagu</item>
     </plurals>
-    <string name="all_audio_folders">Semua folder audio</string>
-    <string name="local_music_folder">Folder musik lokal</string>
     <string name="sort_music">Urutkan musik</string>
     <string name="sort_title_ascending">Alfabet (A ke Z)</string>
     <string name="sort_title_descending">Alfabet (Z ke A)</string>
     <string name="sort_date_added">Tanggal ditambahkan (terbaru dahulu)</string>
     <string name="sort_date_modified">Tanggal diubah (terbaru dahulu)</string>
-    <string name="use_all_audio_folders">Gunakan semua folder audio</string>
-    <string name="use_all_audio_folders_subtitle">Menghapus batas folder dan memindai musik di seluruh perangkat</string>
     <string name="album">album</string>
     <string name="artist">artis</string>
     <string name="playlist">playlist</string>
@@ -561,13 +554,10 @@
     <string name="delete_playlist_confirmation">Hapus “%1$s”? Ketuk lagi untuk konfirmasi.</string>
     <string name="delete_download_confirmation">Hapus “%1$s” dari perangkat ini? Ketuk lagi untuk konfirmasi.</string>
     <string name="running">Berjalan</string>
-    <string name="automix_analysis_status">Automix · lagu ini: %1$s · berikutnya: %2$s</string>
     <string name="analysis_complete">dianalisis</string>
     <string name="analysis_refining">dianalisis, menyempurnakan…</string>
     <string name="analysis_in_progress">menganalisis…</string>
     <string name="waiting">menunggu</string>
-    <string name="automix_enabled_subtitle">Mengatur waktu dan memadukan setiap transisi dari trek itu sendiri. Nonaktifkan jika ponsel menjadi panas atau pemutaran tersendat.</string>
-    <string name="automix_disabled_subtitle">Mengatur waktu dan memadukan transisi secara otomatis, tanpa penggeser. Performa dapat bervariasi pada perangkat yang lebih lambat.</string>
     <string name="no_lyrics_sources_enabled">Tidak ada. Lirik tidak akan diambil.</string>
     <string name="song_cache_large_subtitle">Menyimpan hingga %1$s audio yang diunduh di disk. Ini dapat memakan porsi ruang kosong yang cukup besar.</string>
     <string name="song_cache_limit_subtitle">Menyimpan audio yang diunduh di disk untuk pencarian posisi dan pemutaran ulang instan</string>

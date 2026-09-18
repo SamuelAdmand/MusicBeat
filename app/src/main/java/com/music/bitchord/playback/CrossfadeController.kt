@@ -425,8 +425,6 @@ class CrossfadeController(
         // transition or during the re-buffer after a quality upgrade. The line
         // simply froze on the previous pair, so a track that had not been
         // analysed kept showing the *departing* track's "analysed" until
-        // ticking resumed.
-        publishAnalysisState()
 
         when (phase) {
             Phase.IDLE -> considerAutoTransition()
@@ -436,64 +434,9 @@ class CrossfadeController(
         }
     }
 
-    /** Arms a crossfade as the playing track runs out. */
+    /** Arms a crossfade as the playing track runs out. Disabled. */
     private fun considerAutoTransition() {
-        val player = active()
-        if (!player.isPlaying) return
-        // Nothing to transition *into*, so any analysis state left over from the
-        // previous pair is stale — the last track of a queue should not still be
-        // claiming both songs are measured.
-        if (!player.hasNextMediaItem()) {
-            AppSettings.smartTransitionWindow.value = null
-            return
-        }
-
-        val duration = player.duration
-        if (duration == C.TIME_UNSET || duration <= 0L) return
-
-        // Repeating one track would crossfade it into itself, so nothing is
-        // armed and no window is marked — but the queue behind the loop has not
-        // moved, and what sits after it is still the track that plays next the
-        // moment repeat-one comes off.
-        //
-        // Returning here outright is what made turning repeat off look like it
-        // lost an analysis. Analysis is only ever asked for on the way to
-        // planning a transition, so for as long as the loop ran nothing asked
-        // for the following track at all, and the request that finally arrived
-        // when repeat came off was the *first* one — a whole-track decode
-        // starting from nothing on a song that was by then seconds away, where
-        // an unlooped queue would have had it measured minutes earlier. The
-        // measurement is the same either way, so it may as well be made during
-        // the loop rather than after it.
-        if (player.repeatMode == Player.REPEAT_MODE_ONE) {
-            if (AppSettings.smartFadeEnabled.value) requestAnalysisAround(player, duration)
-            // Stale otherwise: the marker would keep describing the transition
-            // planned for this pair before the loop went on, at a point the
-            // playhead now runs past on every lap without anything happening.
-            AppSettings.smartTransitionWindow.value = null
-            return
-        }
-
-        // Automix is its own on/off, independent of the manual crossfade
-        // length: it decides its own duration from each pair of tracks (beats,
-        // tempo, structure), so requiring a nonzero [AppSettings.crossfadeSeconds]
-        // first would tie an automatic feature to a manual one it doesn't use.
-        if (AppSettings.smartFadeEnabled.value) {
-            considerSmartTransition(duration)
-            return
-        }
-
-        if (configuredFadeMs() <= 0L) return
-        val fade = fadeFor(duration)
-        if (fade <= 0L) return
-
-        val remaining = duration - player.currentPosition
-        // Arm early: the standby has to open the incoming track and buffer to
-        // its cue point, and that work has to be finished by the time the fade
-        // is due rather than started then.
-        if (remaining > fade + ARM_LEAD_MS) return
-
-        begin(fade, endMs = duration, smart = false)
+        return
     }
 
     /**
@@ -984,11 +927,7 @@ class CrossfadeController(
         // setting that actually started it — a Automix normally runs with
         // [configuredFadeMs] at zero, and reading that as "turned off" would
         // end every Automix on its first tick.
-        val settingSwitchedOff = if (smartFadeActive) {
-            !AppSettings.smartFadeEnabled.value
-        } else {
-            configuredFadeMs() <= 0L
-        }
+        val settingSwitchedOff = true
         val done = progress >= 1f ||
             out.playbackState == Player.STATE_ENDED ||
             out.playbackState == Player.STATE_IDLE ||
@@ -1089,7 +1028,7 @@ class CrossfadeController(
 
     /** Still a next track, still playing, still switched on — by whichever setting armed this one. */
     private fun stillWorthFading(): Boolean {
-        val stillOn = if (smartFadeActive) AppSettings.smartFadeEnabled.value else configuredFadeMs() > 0L
+        val stillOn = false
         return stillOn && (outgoing ?: active()).hasNextMediaItem()
     }
 
@@ -1111,7 +1050,7 @@ class CrossfadeController(
 
     // ---- Numbers ------------------------------------------------------------
 
-    private fun configuredFadeMs(): Long = AppSettings.crossfadeSeconds.value * 1000L
+    private fun configuredFadeMs(): Long = 0L
 
     /**
      * The configured length, kept off tracks too short to spend it on. A fade

@@ -188,9 +188,6 @@
     <string name="on_mobile_data">По мобильным данным</string>
     <string name="in_use">Используется</string>
     <string name="blocking">Блокирует</string>
-    <string name="crossfade">Кроссфейд</string>
-    <string name="crossfade_subtitle">Плавно переходит от одного трека к другому</string>
-    <string name="automix">Автомикс [БЕТА]</string>
     <string name="skip_silence">Пропускать тишину</string>
     <string name="skip_silence_subtitle">Обрезает паузы длиннее секунды</string>
     <string name="equalizer">Эквалайзер</string>
@@ -576,15 +573,11 @@
         <item quantity="few">%1$s песни</item>
         <item quantity="many">%1$s песен</item>
     </plurals>
-    <string name="all_audio_folders">Все папки с аудио</string>
-    <string name="local_music_folder">Папка локальной музыки</string>
     <string name="sort_music">Сортировка музыки</string>
     <string name="sort_title_ascending">По алфавиту (А — Я)</string>
     <string name="sort_title_descending">По алфавиту (Я — А)</string>
     <string name="sort_date_added">По дате добавления (сначала новые)</string>
     <string name="sort_date_modified">По дате изменения (сначала новые)</string>
-    <string name="use_all_audio_folders">Использовать все папки с аудио</string>
-    <string name="use_all_audio_folders_subtitle">Снять ограничение по папкам и сканировать музыку по всему устройству</string>
     <string name="album">альбом</string>
     <string name="artist">исполнитель</string>
     <string name="playlist">плейлист</string>
@@ -599,13 +592,10 @@
     <string name="delete_playlist_confirmation">Удалить «%1$s»? Нажмите ещё раз для подтверждения.</string>
     <string name="delete_download_confirmation">Удалить «%1$s» с этого устройства? Нажмите ещё раз для подтверждения.</string>
     <string name="running">Выполняется</string>
-    <string name="automix_analysis_status">Автомикс · эта песня: %1$s · следующая: %2$s</string>
     <string name="analysis_complete">анализ завершён</string>
     <string name="analysis_refining">анализ завершён, уточняется…</string>
     <string name="analysis_in_progress">анализируется…</string>
     <string name="waiting">ожидание</string>
-    <string name="automix_enabled_subtitle">Рассчитывает время и смешивает каждый переход на основе самих треков. Отключите, если телефон нагревается или воспроизведение прерывается.</string>
-    <string name="automix_disabled_subtitle">Автоматически рассчитывает время и смешивает переходы без ползунка. Производительность может отличаться на медленных устройствах.</string>
     <string name="no_lyrics_sources_enabled">Ничего. Текст песен не будет загружаться.</string>
     <string name="song_cache_large_subtitle">Хранит на диске до %1$s загруженного аудио. Это может занять заметную часть свободного места.</string>
     <string name="song_cache_limit_subtitle">Хранит загруженное аудио на диске для мгновенной перемотки и повторного прослушивания</string>

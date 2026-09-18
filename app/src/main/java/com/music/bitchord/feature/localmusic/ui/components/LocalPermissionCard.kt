@@ -32,13 +32,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.material3.TextButton
+
 /**
- * Aesthetic permission card displayed when device audio storage access is required.
+ * Aesthetic permission card displayed when device audio or all files access is required.
  */
 @Composable
 fun LocalPermissionCard(
     onRequestPermission: () -> Unit,
     modifier: Modifier = Modifier,
+    onFallbackPermission: (() -> Unit)? = null,
+    buttonText: String = "Grant All Files Access",
 ) {
     Surface(
         modifier = modifier
@@ -76,7 +80,7 @@ fun LocalPermissionCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Storage Access Needed",
+                text = "All Files Access Needed",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -86,7 +90,7 @@ fun LocalPermissionCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "To scan and play your high-res audio tracks, albums, and folder collections, BitChord needs permission to read audio files on your device.",
+                text = "To scan and play your high-res audio tracks, albums, and folder collections, as well as edit tags and lyrics directly, BitChord needs All Files Access.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -107,10 +111,21 @@ fun LocalPermissionCard(
                 ),
             ) {
                 Text(
-                    text = "Grant Audio Permission",
+                    text = buttonText,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
+            }
+
+            if (onFallbackPermission != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = onFallbackPermission) {
+                    Text(
+                        text = "Grant Basic Audio Permission",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
