@@ -10,6 +10,7 @@ import com.music.bitchord.BuildConfig
 import com.music.bitchord.auth.AuthStore
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.sources.SourceKind
+import com.music.bitchord.feature.artistimage.model.ArtistSort
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.Locale
 
@@ -472,6 +473,8 @@ object AppSettings {
 
     val localMusicSort = MutableStateFlow(LocalMusicSort.TITLE_ASC)
     val downloadedMusicSort = MutableStateFlow(LocalMusicSort.TITLE_ASC)
+    val localArtistSort = MutableStateFlow(ArtistSort.MOST_SONGS)
+    val downloadedArtistSort = MutableStateFlow(ArtistSort.MOST_SONGS)
     val localMusicViewType = MutableStateFlow(LibraryViewType.LIST)
     val downloadedMusicViewType = MutableStateFlow(LibraryViewType.LIST)
     val librarySort = MutableStateFlow(LibrarySort.DEFAULT)
@@ -721,6 +724,8 @@ object AppSettings {
         filterNonMusicAudio.value = prefs.getBoolean(KEY_FILTER_NON_MUSIC_AUDIO, true)
         localMusicSort.value = readLocalMusicSort(KEY_LOCAL_MUSIC_SORT)
         downloadedMusicSort.value = readLocalMusicSort(KEY_DOWNLOADED_MUSIC_SORT)
+        localArtistSort.value = readArtistSort(KEY_LOCAL_ARTIST_SORT)
+        downloadedArtistSort.value = readArtistSort(KEY_DOWNLOADED_ARTIST_SORT)
         localMusicViewType.value = readLibraryViewType(KEY_LOCAL_MUSIC_VIEW_TYPE)
         downloadedMusicViewType.value = readLibraryViewType(KEY_DOWNLOADED_MUSIC_VIEW_TYPE)
         librarySort.value = prefs.getString(KEY_LIBRARY_SORT, null)
@@ -1275,6 +1280,16 @@ object AppSettings {
         prefs.edit().putString(KEY_DOWNLOADED_MUSIC_SORT, value.name).apply()
     }
 
+    fun setLocalArtistSort(value: ArtistSort) {
+        localArtistSort.value = value
+        prefs.edit().putString(KEY_LOCAL_ARTIST_SORT, value.name).apply()
+    }
+
+    fun setDownloadedArtistSort(value: ArtistSort) {
+        downloadedArtistSort.value = value
+        prefs.edit().putString(KEY_DOWNLOADED_ARTIST_SORT, value.name).apply()
+    }
+
     fun setLibrarySort(value: LibrarySort) {
         librarySort.value = value
         prefs.edit().putString(KEY_LIBRARY_SORT, value.name).apply()
@@ -1320,6 +1335,11 @@ object AppSettings {
         prefs.getString(key, null)
             ?.let { saved -> LocalMusicSort.entries.firstOrNull { it.name == saved } }
             ?: LocalMusicSort.TITLE_ASC
+
+    private fun readArtistSort(key: String): ArtistSort =
+        prefs.getString(key, null)
+            ?.let { saved -> ArtistSort.entries.firstOrNull { it.name == saved } }
+            ?: ArtistSort.MOST_SONGS
 
     private fun readLibraryViewType(key: String): LibraryViewType =
         prefs.getString(key, null)
@@ -1504,6 +1524,8 @@ object AppSettings {
     private const val KEY_FILTER_NON_MUSIC_AUDIO = "filter_non_music_audio"
     private const val KEY_LOCAL_MUSIC_SORT = "local_music_sort"
     private const val KEY_DOWNLOADED_MUSIC_SORT = "downloaded_music_sort"
+    private const val KEY_LOCAL_ARTIST_SORT = "local_artist_sort"
+    private const val KEY_DOWNLOADED_ARTIST_SORT = "downloaded_artist_sort"
     private const val KEY_LIBRARY_SORT = "library_sort"
     private const val KEY_DETAIL_SONG_SORTS = "detail_song_sorts"
     private const val KEY_LOCAL_MUSIC_VIEW_TYPE = "local_music_view_type"

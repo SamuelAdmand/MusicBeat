@@ -77,7 +77,7 @@ import androidx.compose.foundation.border
 fun Modifier.thumbnailBorder(shape: Shape): Modifier = composed {
     this.border(
         width = 1.dp,
-        color = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.15f),
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
         shape = shape
     )
 }

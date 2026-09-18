@@ -2073,7 +2073,7 @@ fun NowPlayingScreen(
             // there saying no lyrics were found: none were looked for. It is
             // also the only way into the full lyrics panel, so with it gone
             // the feature is properly gone.
-            if (!lyricsOpen && syncedLyricsEnabled) {
+            if (!lyricsOpen && (syncedLyricsEnabled || !lyrics.isNullOrEmpty())) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -3184,6 +3184,14 @@ private fun CurrentLyricLine(
 ) {
     val isSynced = remember(lines) { lines.any { it.timeMs > 0L } }
     if (!isSynced) {
+        val previewLine = remember(lines) {
+            lines.firstOrNull { !it.isGap && !Genius.isSectionHeader(it.text) }?.text
+        }
+        val label = if (!previewLine.isNullOrBlank()) {
+            "$previewLine • Tap for lyrics"
+        } else {
+            "Lyrics available • Tap to view"
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = modifier
@@ -3199,7 +3207,7 @@ private fun CurrentLyricLine(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = "Lyrics available • Tap to view",
+                text = label,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontSize = 13.5.sp,
                     fontWeight = FontWeight.Medium,

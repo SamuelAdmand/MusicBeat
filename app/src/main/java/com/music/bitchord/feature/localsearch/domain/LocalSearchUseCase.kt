@@ -1,6 +1,7 @@
 package com.music.bitchord.feature.localsearch.domain
 
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.feature.artistimage.util.ArtistSplitter
 import com.music.bitchord.feature.localsearch.domain.model.LocalSearchFilter
 import com.music.bitchord.feature.localsearch.domain.model.LocalSearchResult
 import java.util.Locale
@@ -52,15 +53,18 @@ object LocalSearchUseCase {
 
         // Find matching artists
         val matchedArtists = if (filter == LocalSearchFilter.ALL || filter == LocalSearchFilter.ARTISTS) {
-            allSongs
-                .filter { it.artist.isNotBlank() }
-                .groupBy { it.artist }
-                .filter { (artist, _) -> artist.lowercase(Locale.ROOT).contains(q) }
-                .map { (artist, songs) ->
+            ArtistSplitter.groupSongsByArtist(allSongs)
+                .filter { it.name.lowercase(Locale.ROOT).contains(q) }
+                .sortedWith(
+                    compareByDescending<com.music.bitchord.feature.artistimage.model.ArtistEntry> {
+                        it.name.lowercase(Locale.ROOT).startsWith(q)
+                    }.thenByDescending { it.songs.size }
+                )
+                .map { entry ->
                     LocalSearchResult.Artist(
-                        name = artist,
-                        songs = songs,
-                        thumbnailUrl = songs.firstNotNullOfOrNull { it.thumbnailUrl },
+                        name = entry.name,
+                        songs = entry.songs,
+                        thumbnailUrl = entry.thumbnailUrl,
                     )
                 }
         } else {
@@ -86,15 +90,20 @@ object LocalSearchUseCase {
                         songs = songs,
                     )
                 }
+                .sortedWith(
+                    compareByDescending<LocalSearchResult.Folder> { it.name.lowercase(Locale.ROOT).startsWith(q) }
+                        .thenByDescending { it.songs.size }
+                )
         } else {
             emptyList()
         }
 
         when (filter) {
             LocalSearchFilter.ALL -> {
-                results.addAll(matchedSongs.map { LocalSearchResult.Track(it) })
-                results.addAll(matchedAlbums)
+                // Artists and Albums must precede individual tracks so users see the top artist/album results first
                 results.addAll(matchedArtists)
+                results.addAll(matchedAlbums)
+                results.addAll(matchedSongs.map { LocalSearchResult.Track(it) })
                 results.addAll(matchedFolders)
             }
             LocalSearchFilter.SONGS -> results.addAll(matchedSongs.map { LocalSearchResult.Track(it) })

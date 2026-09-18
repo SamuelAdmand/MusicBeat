@@ -571,6 +571,7 @@ private fun BitChordApp(
     }
 
     val localSongsState by viewModel.localSongs.collectAsStateWithLifecycle()
+    val isRefreshingLocalMusic by viewModel.isRefreshingLocalMusic.collectAsStateWithLifecycle()
     val localSongs = (localSongsState as? UiState.Success)?.data.orEmpty()
     val localEmptyMessage = (localSongsState as? UiState.Error)?.message
 
@@ -1700,6 +1701,15 @@ private fun BitChordApp(
                             isDownloads = page.browseId == "local:downloads",
                             currentSong = player.song,
                             isPlaying = player.isPlaying,
+                            isRefreshing = isRefreshingLocalMusic,
+                            onRefresh = {
+                                if (page.browseId == "local:downloads") {
+                                    viewModel.reloadLocalDetail("local:downloads", isPullToRefresh = true)
+                                } else if (page.browseId == "local:all") {
+                                    viewModel.reloadLocalDetail("local:all", isPullToRefresh = true)
+                                }
+                                viewModel.loadLocalMusic(isPullToRefresh = true)
+                            },
                             onDeleteDownloads = { selected ->
                                 scope.launch {
                                     selected.forEach { song -> Downloads.delete(context, song.videoId) }
@@ -1736,6 +1746,7 @@ private fun BitChordApp(
                                     downloadId = downloadId,
                                 )
                             },
+                            onSongTagsOrLyricsSaved = { viewModel.reloadLyrics(it) },
                             contentPadding = listPadding,
                         )
                     } else if (page != null) {
@@ -1836,6 +1847,8 @@ private fun BitChordApp(
                                 isDownloads = false,
                                 currentSong = player.song,
                                 isPlaying = player.isPlaying,
+                                isRefreshing = isRefreshingLocalMusic,
+                                onRefresh = { viewModel.loadLocalMusic(isPullToRefresh = true) },
                                 onSongClick = play,
                                 onSongLongPress = openSongMenu,
                                 onSongSwipe = onSongSwipe,
@@ -1862,6 +1875,7 @@ private fun BitChordApp(
                                 onPlayNext = playNext,
                                 onAddToQueue = addToQueue,
                                 onDeleteSong = { viewModel.loadLocalMusic() },
+                                onSongTagsOrLyricsSaved = { viewModel.reloadLyrics(it) },
                             )
                         }
                         TAB_ALBUMS -> if (!hasStoragePermission) {
@@ -1878,6 +1892,8 @@ private fun BitChordApp(
                                 isDownloads = false,
                                 currentSong = player.song,
                                 isPlaying = player.isPlaying,
+                                isRefreshing = isRefreshingLocalMusic,
+                                onRefresh = { viewModel.loadLocalMusic(isPullToRefresh = true) },
                                 onSongClick = play,
                                 onSongLongPress = openSongMenu,
                                 onSongSwipe = onSongSwipe,
@@ -1904,6 +1920,7 @@ private fun BitChordApp(
                                 onPlayNext = playNext,
                                 onAddToQueue = addToQueue,
                                 onDeleteSong = { viewModel.loadLocalMusic() },
+                                onSongTagsOrLyricsSaved = { viewModel.reloadLyrics(it) },
                             )
                         }
                         TAB_ARTISTS -> if (!hasStoragePermission) {
@@ -1920,6 +1937,8 @@ private fun BitChordApp(
                                 isDownloads = false,
                                 currentSong = player.song,
                                 isPlaying = player.isPlaying,
+                                isRefreshing = isRefreshingLocalMusic,
+                                onRefresh = { viewModel.loadLocalMusic(isPullToRefresh = true) },
                                 onSongClick = play,
                                 onSongLongPress = openSongMenu,
                                 onSongSwipe = onSongSwipe,
@@ -1946,6 +1965,7 @@ private fun BitChordApp(
                                 onPlayNext = playNext,
                                 onAddToQueue = addToQueue,
                                 onDeleteSong = { viewModel.loadLocalMusic() },
+                                onSongTagsOrLyricsSaved = { viewModel.reloadLyrics(it) },
                             )
                         }
                         TAB_FOLDERS -> if (!hasStoragePermission) {
@@ -1962,6 +1982,8 @@ private fun BitChordApp(
                                 isDownloads = false,
                                 currentSong = player.song,
                                 isPlaying = player.isPlaying,
+                                isRefreshing = isRefreshingLocalMusic,
+                                onRefresh = { viewModel.loadLocalMusic(isPullToRefresh = true) },
                                 onSongClick = play,
                                 onSongLongPress = openSongMenu,
                                 onSongSwipe = onSongSwipe,
@@ -1988,6 +2010,7 @@ private fun BitChordApp(
                                 onPlayNext = playNext,
                                 onAddToQueue = addToQueue,
                                 onDeleteSong = { viewModel.loadLocalMusic() },
+                                onSongTagsOrLyricsSaved = { viewModel.reloadLyrics(it) },
                             )
                         }
                         TAB_SEARCH -> if (!hasStoragePermission) {
@@ -2005,44 +2028,11 @@ private fun BitChordApp(
                                 onSongClick = play,
                                 onSongLongPress = openSongMenu,
                                 onSongSwipe = onSongSwipe,
-                                onAlbumClick = { title, songs, art ->
-                                    browseActions = BrowseTarget(
-                                        browseId = null,
-                                        title = title,
-                                        subtitle = songs.firstOrNull()?.artist.orEmpty(),
-                                        thumbnailUrl = art,
-                                        songs = songs,
-                                        downloadId = null,
-                                    )
-                                    viewModel.openLocalDetail(
-                                        browseId = "local:album:$title",
-                                        title = title,
-                                        subtitle = songs.firstOrNull()?.artist.orEmpty(),
-                                        thumbnailUrl = art,
-                                        type = BrowseType.ALBUM,
-                                        songs = songs,
-                                    )
+                                onShuffle = { songs ->
+                                    QueueShuffle.enableForNextQueue()
+                                    play(songs, songs.indices.random())
                                 },
-                                onArtistClick = { artist, songs ->
-                                    viewModel.openLocalDetail(
-                                        browseId = "local:artist:$artist",
-                                        title = artist,
-                                        subtitle = "${songs.size} songs",
-                                        thumbnailUrl = songs.firstNotNullOfOrNull { it.thumbnailUrl },
-                                        type = BrowseType.ARTIST,
-                                        songs = songs,
-                                    )
-                                },
-                                onFolderClick = { folderName, songs ->
-                                    viewModel.openLocalDetail(
-                                        browseId = "local:folder:$folderName",
-                                        title = folderName,
-                                        subtitle = "${songs.size} songs",
-                                        thumbnailUrl = null,
-                                        type = BrowseType.PLAYLIST,
-                                        songs = songs,
-                                    )
-                                },
+                                focusTrigger = searchFocusTrigger,
                                 recentSearches = searchHistory,
                                 onRecordSearch = { term -> viewModel.recordSearch() },
                                 onRemoveSearch = viewModel::removeSearch,
@@ -2087,7 +2077,7 @@ private fun BitChordApp(
                         detail != null -> detailScrolled
                         else -> scrolled || selectedTab == TAB_SEARCH
                     },
-                    refreshing = false,
+                    refreshing = isRefreshingLocalMusic,
                     pullFraction = { 0f },
                     onBack = when {
                         showSettings -> ({ showSettings = false })
@@ -2312,6 +2302,7 @@ private fun BitChordApp(
                                 showTagEditor = false
                                 songActions = null
                                 viewModel.loadLocalMusic()
+                                viewModel.reloadLyrics(song)
                             },
                         )
                     }
@@ -2335,6 +2326,7 @@ private fun BitChordApp(
                             onLyricsSaved = {
                                 showLyricsEditor = false
                                 songActions = null
+                                viewModel.reloadLyrics(song)
                             },
                         )
                     }

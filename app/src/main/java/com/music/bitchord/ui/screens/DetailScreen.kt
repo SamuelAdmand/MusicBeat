@@ -95,6 +95,7 @@ import com.music.bitchord.data.model.UiState
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.model.isSameTrackAs
 import com.music.bitchord.data.settings.AppSettings
+import com.music.bitchord.feature.artistimage.model.ArtistImage
 import com.music.bitchord.ui.components.ArtworkWash
 import com.music.bitchord.ui.components.DownloadedBadge
 import com.music.bitchord.ui.components.ExplicitSongTitle
@@ -237,6 +238,7 @@ fun DetailScreen(
         rawSongs.withIndex().associate { (i, s) -> s.videoId to i + 1 }
     }
     val isArtist = page.type == BrowseType.ARTIST
+    val isLocalArtist = isArtist && (page.browseId.startsWith("local:") || page.sections.isEmpty())
     val palette = rememberArtworkPalette(page.thumbnailUrl)
 
     // Narrowing the running order in place — the release equivalent of the
@@ -331,6 +333,7 @@ fun DetailScreen(
             artHeight = artHeight,
             listState = listState,
             hazeState = pageHaze,
+            isLocalArtist = isLocalArtist,
             modifier = Modifier.matchParentSize(),
         )
 
@@ -339,6 +342,7 @@ fun DetailScreen(
             artHeight = artHeight,
             listState = listState,
             hazeState = pageHaze,
+            isLocalArtist = isLocalArtist,
         )
 
         LazyColumn(
@@ -349,7 +353,26 @@ fun DetailScreen(
             contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding()),
         ) {
             item(key = "header") {
-                if (isArtist) {
+                if (isLocalArtist) {
+                    LocalArtistHeader(
+                        page = page,
+                        palette = palette,
+                        trackCount = songs.size,
+                        songs = songs,
+                        onPlay = { onSongClick(songs, 0) },
+                        onShuffle = { onShuffle(songs) },
+                        searching = searching,
+                        onSearch = {
+                            if (searching) {
+                                closeSearch()
+                            } else {
+                                searching = true
+                                focusSearch = true
+                            }
+                        },
+                        onMore = onMore,
+                    )
+                } else if (isArtist) {
                     ArtistHeader(page = page, palette = palette, artHeight = artHeight)
                 } else {
                     ReleaseHeader(
@@ -400,7 +423,7 @@ fun DetailScreen(
                 }
             }
 
-            if (songs.isNotEmpty() && isArtist) {
+            if (songs.isNotEmpty() && isArtist && !isLocalArtist) {
                 item(key = "actions") {
                     ActionRow(
                         palette = palette,
@@ -436,7 +459,7 @@ fun DetailScreen(
             when (val state = page.songs) {
                 is UiState.Loading -> detailSkeleton(isArtist)
                 is UiState.Error -> item { MessageState(state.message) }
-                is UiState.Success -> if (isArtist) {
+                is UiState.Success -> if (isArtist && !isLocalArtist) {
                     // An artist's full song list would bury the album shelves, so
                     // it pages sideways four at a time and stops at twenty.
                     item {
@@ -895,6 +918,144 @@ private fun ArtistHeader(page: DetailPage, palette: ArtworkPalette, artHeight: D
 }
 
 /**
+ * Header for local artist pages: centered circular avatar with Deezer portrait,
+ * artist title, track count subtitle, and full action buttons (Shuffle, Play, Search, More).
+ */
+@Composable
+private fun LocalArtistHeader(
+    page: DetailPage,
+    palette: ArtworkPalette,
+    trackCount: Int,
+    songs: List<Song>,
+    onPlay: () -> Unit,
+    onShuffle: () -> Unit,
+    searching: Boolean,
+    onSearch: () -> Unit,
+    onMore: ((List<Song>) -> Unit)?,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = topBarContentPadding())
+            .padding(horizontal = PAGE_GUTTER),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        val avatarSize = 180.dp
+        Box(
+            modifier = Modifier
+                .size(avatarSize)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Person,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(64.dp),
+            )
+            val imageModel = remember(page.title, page.thumbnailUrl) {
+                ArtistImage(
+                    name = page.title,
+                    fallbackUrl = page.thumbnailUrl ?: songs.firstNotNullOfOrNull { it.thumbnailUrl },
+                    isLarge = true,
+                )
+            }
+            AsyncImage(
+                model = imageModel,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .thumbnailBorder(CircleShape),
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Text(
+            text = page.title,
+            style = MaterialTheme.typography.headlineMedium,
+            color = palette.onBackground,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = HEADER_GUTTER),
+        )
+
+        Spacer(Modifier.height(5.dp))
+
+        Text(
+            text = buildString {
+                append("ARTIST · ")
+                append(pluralStringResource(R.plurals.track_count_plural, trackCount, trackCount).uppercase(Locale.ROOT))
+            },
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.7.sp),
+            color = palette.onBackgroundVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = HEADER_GUTTER),
+        )
+
+        if (songs.isNotEmpty()) {
+            val circles = listOfNotNull(onMore).size + 2 // Shuffle, Search, optional More
+            val full = circles >= 4
+            val circleSize = if (full) 46.dp else 50.dp
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = HEADER_GUTTER),
+                horizontalArrangement = Arrangement.spacedBy(
+                    if (full) 8.dp else 10.dp,
+                    Alignment.CenterHorizontally,
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircleIconButton(
+                    icon = BitChordIcons.Shuffle,
+                    contentDescription = stringResource(R.string.shuffle),
+                    palette = palette,
+                    onClick = onShuffle,
+                    haptic = Haptic.Resume,
+                    size = circleSize,
+                )
+                PlayPill(
+                    palette = palette,
+                    onClick = onPlay,
+                    horizontalPadding = when (circles) {
+                        1, 2 -> 32.dp
+                        3 -> 24.dp
+                        else -> 14.dp
+                    },
+                )
+                CircleIconButton(
+                    icon = if (searching) Icons.Rounded.Close else BitChordIcons.Search,
+                    contentDescription = stringResource(
+                        if (searching) R.string.close_search else R.string.search_this_list,
+                    ),
+                    palette = palette,
+                    onClick = onSearch,
+                    size = circleSize,
+                )
+                onMore?.let { more ->
+                    CircleIconButton(
+                        icon = Icons.Rounded.MoreHoriz,
+                        contentDescription = stringResource(R.string.more),
+                        palette = palette,
+                        onClick = { more(songs) },
+                        size = circleSize,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+    }
+}
+
+/**
  * Everything on a detail page that is colour rather than words: the page wash,
  * and the artwork sitting on top of it.
  *
@@ -918,6 +1079,7 @@ private fun PageBackground(
     listState: LazyListState,
     hazeState: HazeState,
     modifier: Modifier = Modifier,
+    isLocalArtist: Boolean = false,
 ) {
     Box(
         modifier
@@ -926,65 +1088,67 @@ private fun PageBackground(
     ) {
         ArtworkWash(palette = palette, modifier = Modifier.matchParentSize())
 
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(artHeight)
-                .offset { IntOffset(0, listState.headerTop(artHeight.toPx()).roundToInt()) },
-        ) {
-            AsyncImage(
-                model = page.thumbnailUrl.artworkAt(HEADER_ART_PX),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(palette.elevated),
-            )
-
-            // Above the still art but below both gradients, so the scrim and
-            // the wash that blend the header into the page still sit over it.
-            // Always running: unlike the player's sleeve there is no transport
-            // here to follow, and the page is only up while it's being read.
-            canvas?.let { clip ->
-                CanvasArtworkPlayer(
-                    canvas = clip,
-                    isPlaying = true,
-                    modifier = Modifier.matchParentSize(),
-                )
-            }
-
-            // Shade under the glass bar. Drawn in the page's own tint rather
-            // than in black, so the back arrow — which is themed, not always
-            // white — keeps its contrast in light mode as well as dark.
+        if (!isLocalArtist) {
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.28f)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(palette.background.copy(alpha = 0.55f), Color.Transparent),
-                        ),
-                    ),
-            )
+                    .height(artHeight)
+                    .offset { IntOffset(0, listState.headerTop(artHeight.toPx()).roundToInt()) },
+            ) {
+                AsyncImage(
+                    model = page.thumbnailUrl.artworkAt(HEADER_ART_PX),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(palette.elevated),
+                )
 
-            // Settles the foot of the picture onto the colour the page is made
-            // of, so the two sides of the join are already close before the
-            // glass goes over them — a blur averages what it is given and
-            // cannot invent agreement that isn't there. It matters most on a
-            // monochrome sleeve, where the wash is the only thing with a hue.
-            //
-            // Inside this layer, deliberately: drawn above the glass it would
-            // be a hard-edged rectangle of its own.
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0.55f to Color.Transparent,
-                            1.00f to palette.wash.copy(alpha = 0.88f),
+                // Above the still art but below both gradients, so the scrim and
+                // the wash that blend the header into the page still sit over it.
+                // Always running: unlike the player's sleeve there is no transport
+                // here to follow, and the page is only up while it's being read.
+                canvas?.let { clip ->
+                    CanvasArtworkPlayer(
+                        canvas = clip,
+                        isPlaying = true,
+                        modifier = Modifier.matchParentSize(),
+                    )
+                }
+
+                // Shade under the glass bar. Drawn in the page's own tint rather
+                // than in black, so the back arrow — which is themed, not always
+                // white — keeps its contrast in light mode as well as dark.
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.28f)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(palette.background.copy(alpha = 0.55f), Color.Transparent),
+                            ),
                         ),
-                    ),
-            )
+                )
+
+                // Settles the foot of the picture onto the colour the page is made
+                // of, so the two sides of the join are already close before the
+                // glass goes over them — a blur averages what it is given and
+                // cannot invent agreement that isn't there. It matters most on a
+                // monochrome sleeve, where the wash is the only thing with a hue.
+                //
+                // Inside this layer, deliberately: drawn above the glass it would
+                // be a hard-edged rectangle of its own.
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0.55f to Color.Transparent,
+                                1.00f to palette.wash.copy(alpha = 0.88f),
+                            ),
+                        ),
+                )
+            }
         }
     }
 }
@@ -1012,11 +1176,12 @@ private fun MergeBand(
     artHeight: Dp,
     listState: LazyListState,
     hazeState: HazeState,
+    isLocalArtist: Boolean = false,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     // Asked for no dynamic blur, the page falls back to what the background
     // does on its own: the sleeve settling onto the wash it is drawn over.
-    if (reduceDynamicBlur) return
+    if (reduceDynamicBlur || isLocalArtist) return
 
     Box(
         Modifier
@@ -1583,7 +1748,7 @@ private fun List<Song>.playtimeSummary(): String {
         else -> {
             val hours = minutes / 60
             val rest = minutes % 60
-            val hourLabel = pluralStringResource(R.plurals.hour_count, hours.toInt(), hours)
+            val hourLabel = pluralStringResource(R.plurals.hour_count, hours, hours)
             if (rest == 0) {
                 stringResource(R.string.song_count_with_duration, count, hourLabel)
             } else {

@@ -4280,10 +4280,12 @@ class PlaybackService : MediaLibraryService() {
 
         serviceLyricsJob?.cancel()
         serviceLyricsJob = scope.launch(Dispatchers.IO) {
-            val localUri = currentSong.localUri
+            val targetUri = currentSong.localUri ?: currentSong.localPath ?: currentSong.videoId.takeIf {
+                it.startsWith("content://") || it.startsWith("file://") || it.startsWith("/")
+            }
             var lines: List<LyricLine>? = null
-            if (localUri != null) {
-                lines = EmbeddedLyrics.forUri(this@PlaybackService, localUri)
+            if (targetUri != null) {
+                lines = EmbeddedLyrics.forUri(this@PlaybackService, targetUri)
             }
             if (lines == null) {
                 val found = LyricsRepository.lyrics(
@@ -4297,7 +4299,7 @@ class PlaybackService : MediaLibraryService() {
                     prioritizeSyllableSync = AppSettings.prioritizeSyllableSync.value,
                 )
                 lines = found?.lines
-                if (!lines.isNullOrEmpty() && AppSettings.autoEmbedLyrics.value && (localUri != null || !currentSong.localPath.isNullOrBlank())) {
+                if (!lines.isNullOrEmpty() && AppSettings.autoEmbedLyrics.value && (targetUri != null || !currentSong.localPath.isNullOrBlank())) {
                     val lrcText = lines.toLrc()
                     LocalLyricsManager.autoEmbedLyrics(this@PlaybackService, currentSong, lrcText)
                 }

@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +36,7 @@ import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.model.isSameTrackAs
+import com.music.bitchord.feature.artistimage.model.ArtistImage
 import com.music.bitchord.feature.localsearch.domain.model.LocalSearchResult
 import com.music.bitchord.ui.components.PAGE_GUTTER
 import com.music.bitchord.ui.components.SongRow
@@ -186,17 +188,22 @@ private fun ArtistResultRow(
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(26.dp),
             )
-            if (artist.thumbnailUrl != null) {
-                AsyncImage(
-                    model = artist.thumbnailUrl.artworkAt(ROW_ART_PX),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .thumbnailBorder(CircleShape),
+            val imageModel = remember(artist.name, artist.thumbnailUrl) {
+                ArtistImage(
+                    name = artist.name,
+                    fallbackUrl = artist.thumbnailUrl?.artworkAt(ROW_ART_PX),
+                    isLarge = false,
                 )
             }
+            AsyncImage(
+                model = imageModel,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .thumbnailBorder(CircleShape),
+            )
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {

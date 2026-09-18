@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.music.bitchord.R
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.feature.artistimage.util.ArtistSplitter
 
 /**
  * Material 3 DropdownMenu displaying the 8 local song options matching the reference player.
@@ -228,21 +229,42 @@ fun LocalSongDropdownMenu(
             }
 
             if (onGoToArtist != null && song.artist.isNotBlank()) {
-                DropdownMenuItem(
-                    text = { Text(song.artist) },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Rounded.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
+                val artists = ArtistSplitter.split(song.artist)
+                if (artists.isEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text(song.artist) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Rounded.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                        onClick = {
+                            showingSubMenu = false
+                            onDismissRequest()
+                            onGoToArtist(song.artist)
+                        },
+                    )
+                } else {
+                    artists.forEach { artistName ->
+                        DropdownMenuItem(
+                            text = { Text(artistName) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Rounded.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            },
+                            onClick = {
+                                showingSubMenu = false
+                                onDismissRequest()
+                                onGoToArtist(artistName)
+                            },
                         )
-                    },
-                    onClick = {
-                        showingSubMenu = false
-                        onDismissRequest()
-                        onGoToArtist(song.artist)
-                    },
-                )
+                    }
+                }
             }
 
             if (onGoToFolder != null && !song.localPath.isNullOrBlank()) {

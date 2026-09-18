@@ -31,6 +31,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 
@@ -42,13 +43,23 @@ fun LocalSearchField(
     modifier: Modifier = Modifier,
     placeholder: String = "Search songs, albums, artists...",
     autoFocus: Boolean = false,
+    focusTrigger: Int = 0,
 ) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(autoFocus) {
         if (autoFocus) {
             focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
+    LaunchedEffect(focusTrigger) {
+        if (focusTrigger > 0) {
+            focusRequester.requestFocus()
+            keyboardController?.show()
         }
     }
 
@@ -58,6 +69,10 @@ fun LocalSearchField(
             .height(52.dp)
             .clip(RoundedCornerShape(26.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+            .clickable {
+                focusRequester.requestFocus()
+                keyboardController?.show()
+            }
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

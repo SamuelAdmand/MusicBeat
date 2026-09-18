@@ -14,7 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.music.bitchord.ui.components.FastScroller
+import com.music.bitchord.ui.components.SectionIndexer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.FolderOff
@@ -67,53 +70,64 @@ fun LocalFoldersTab(
         return
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = contentPadding.calculateTopPadding() + 8.dp,
-            bottom = contentPadding.calculateBottomPadding() + 16.dp,
-        ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "${folders.size} ${if (folders.size == 1) "Folder" else "Folders"}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                OutlinedButton(
-                    onClick = onOpenManageFolders,
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+    val listState = rememberLazyListState()
+    val scrollPadding = PaddingValues(
+        start = 16.dp,
+        end = 16.dp,
+        top = contentPadding.calculateTopPadding() + 8.dp,
+        bottom = contentPadding.calculateBottomPadding() + 16.dp,
+    )
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = scrollPadding,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.FolderSpecial,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
+                    Text(
+                        text = "${folders.size} ${if (folders.size == 1) "Folder" else "Folders"}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "Manage Blacklist", style = MaterialTheme.typography.labelMedium)
+                    OutlinedButton(
+                        onClick = onOpenManageFolders,
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.FolderSpecial,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Manage Blacklist", style = MaterialTheme.typography.labelMedium)
+                    }
                 }
             }
-        }
 
-        items(folders, key = { it.path }) { folder ->
-            LocalFolderItem(
-                folder = folder,
-                onClick = { onFolderClick(folder) },
-                onToggleBlacklist = { isBlacklisted ->
-                    onToggleBlacklist(folder.path, isBlacklisted)
-                },
-            )
+            items(folders, key = { it.path }) { folder ->
+                LocalFolderItem(
+                    folder = folder,
+                    onClick = { onFolderClick(folder) },
+                    onToggleBlacklist = { isBlacklisted ->
+                        onToggleBlacklist(folder.path, isBlacklisted)
+                    },
+                )
+            }
         }
+        FastScroller(
+            listState = listState,
+            itemCount = folders.size,
+            sectionNameForIndex = { index -> SectionIndexer.getSectionName(folders[index].name) },
+            contentPadding = scrollPadding,
+        )
     }
 }

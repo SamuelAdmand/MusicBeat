@@ -144,6 +144,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _localSongs = MutableStateFlow<UiState<List<Song>>>(UiState.Loading)
     val localSongs: StateFlow<UiState<List<Song>>> = _localSongs.asStateFlow()
 
+    private val _isRefreshingLocalMusic = MutableStateFlow(false)
+    val isRefreshingLocalMusic: StateFlow<Boolean> = _isRefreshingLocalMusic.asStateFlow()
+
     /**
      * What the search page offers while a query is being typed, led by the
      * query itself.
@@ -243,6 +246,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * different one.
      */
     private var lyricsFor: Pair<String, Set<LyricsSource>>? = null
+    private var lastSong: Song? = null
 
     /**
      * Called as the playing track changes; cheap no-op when already loaded.
@@ -262,32 +266,37 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         album: String? = null,
         localUri: String? = null,
         song: Song? = null,
+        force: Boolean = false,
     ) {
+        lastSong = song ?: Song(
+            videoId = videoId,
+            title = title,
+            artist = artist,
+            thumbnailUrl = null,
+            albumName = album,
+            localUri = localUri,
+        )
         val sources = if (AppSettings.syncedLyrics.value) {
             AppSettings.lyricsSources.value
         } else {
             emptySet()
         }
         val key = videoId to sources
-        if (lyricsFor == key) return
+        if (!force && lyricsFor == key) return
         lyricsFor = key
         _lyrics.value = null
         _lyricsSource.value = null
         lyricsJob?.cancel()
-        if (sources.isEmpty()) {
-            // Switched off, or every source unticked. Nothing to look up, and
-            // nothing to say about it — the player drops the lyric strip
-            // rather than reporting a track with no lyrics.
-            _lyricsChecked.value = true
-            return
-        }
         _lyricsChecked.value = false
+
         lyricsJob = viewModelScope.launch {
             // The file first, and without the duration gate below: a length is
             // only needed to *match* a track against a stranger's database, and
             // nothing is being matched here — these lyrics were written into
             // this exact file, for this exact recording.
-            val targetUri = localUri ?: song?.localUri
+            val targetUri = localUri ?: song?.localUri ?: song?.localPath ?: videoId.takeIf {
+                it.startsWith("content://") || it.startsWith("file://") || it.startsWith("/")
+            }
             if (targetUri != null) {
                 EmbeddedLyrics.forUri(getApplication(), targetUri)?.let { embedded ->
                     _lyrics.value = embedded
@@ -298,11 +307,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     return@launch
                 }
             }
+
+            if (sources.isEmpty()) {
+                // Switched off, or every source unticked. Nothing to look up.
+                _lyricsChecked.value = true
+                return@launch
+            }
+
             if (durationMs <= 0L) {
                 // Duration arrives a beat after the track does; wait for it.
                 lyricsFor = null
                 return@launch
             }
+
             val found = LyricsRepository.lyrics(
                 videoId, title, artist, durationMs, album, sources,
                 AppSettings.lyricsSourceOrder.value, AppSettings.prioritizeSyllableSync.value,
@@ -332,6 +349,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         }
+    }
+
+    /**
+     * Forces an immediate reload of lyrics for [song] (or the current playing track),
+     * clearing the cache so newly embedded or edited lyrics appear immediately.
+     */
+    fun reloadLyrics(song: Song? = null) {
+        val target = song ?: lastSong ?: return
+        lyricsFor = null
+        loadLyrics(
+            videoId = target.videoId,
+            title = target.title,
+            artist = target.artist,
+            durationMs = 0L,
+            album = target.albumName,
+            localUri = target.localUri,
+            song = target,
+            force = true,
+        )
     }
 
     private val _account = MutableStateFlow<Account?>(null)
@@ -1988,52 +2024,69 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun loadLocalMusic() {
+    fun loadLocalMusic(isPullToRefresh: Boolean = false) {
         viewModelScope.launch {
-            _localSongs.value = UiState.Loading
-            val context = getApplication<Application>()
-            if (!LocalMediaRepository.hasStoragePermission(context)) {
-                _localSongs.value = UiState.Error(text(R.string.storage_required_read))
-            } else {
-                val songs = LocalMediaRepository.getLocalMusic(context)
-                if (songs.isEmpty()) {
-                    _localSongs.value = UiState.Error(text(R.string.no_local_audio_found))
+            if (isPullToRefresh) {
+                _isRefreshingLocalMusic.value = true
+            } else if (_localSongs.value !is UiState.Success) {
+                _localSongs.value = UiState.Loading
+            }
+            try {
+                val context = getApplication<Application>()
+                if (!LocalMediaRepository.hasStoragePermission(context)) {
+                    _localSongs.value = UiState.Error(text(R.string.storage_required_read))
                 } else {
-                    _localSongs.value = UiState.Success(songs)
+                    val songs = LocalMediaRepository.getLocalMusic(context)
+                    if (songs.isEmpty()) {
+                        _localSongs.value = UiState.Error(text(R.string.no_local_audio_found))
+                    } else {
+                        _localSongs.value = UiState.Success(songs)
+                    }
                 }
+            } finally {
+                _isRefreshingLocalMusic.value = false
             }
         }
     }
 
-    fun reloadLocalDetail(browseId: String) {
+    fun reloadLocalDetail(browseId: String, isPullToRefresh: Boolean = false) {
         viewModelScope.launch {
-            val context = getApplication<Application>()
-            val state: UiState<List<Song>> = when {
-                Downloads.recordIdOf(browseId) != null -> {
-                    val songs = downloadedPlaylist(browseId)
-                    if (songs.isEmpty()) UiState.Error(text(R.string.downloaded_playlist_empty))
-                    else UiState.Success(songs)
-                }
-                browseId == "local:downloads" -> {
-                    val songs = Downloads.getDownloadedSongs(context)
-                    if (songs.isEmpty()) UiState.Error("No downloaded tracks")
-                    else UiState.Success(songs)
-                }
-                browseId == "local:all" -> {
-                    if (!LocalMediaRepository.hasStoragePermission(context)) {
-                        UiState.Error(text(R.string.storage_required_read))
-                    } else {
-                        val songs = LocalMediaRepository.getLocalMusic(context)
-                        if (songs.isEmpty()) UiState.Error(text(R.string.no_local_audio_found))
+            if (isPullToRefresh) {
+                _isRefreshingLocalMusic.value = true
+            }
+            try {
+                val context = getApplication<Application>()
+                val state: UiState<List<Song>> = when {
+                    Downloads.recordIdOf(browseId) != null -> {
+                        val songs = downloadedPlaylist(browseId)
+                        if (songs.isEmpty()) UiState.Error(text(R.string.downloaded_playlist_empty))
                         else UiState.Success(songs)
                     }
+                    browseId == "local:downloads" -> {
+                        val songs = Downloads.getDownloadedSongs(context)
+                        if (songs.isEmpty()) UiState.Error("No downloaded tracks")
+                        else UiState.Success(songs)
+                    }
+                    browseId == "local:all" -> {
+                        if (!LocalMediaRepository.hasStoragePermission(context)) {
+                            UiState.Error(text(R.string.storage_required_read))
+                        } else {
+                            val songs = LocalMediaRepository.getLocalMusic(context)
+                            if (songs.isEmpty()) UiState.Error(text(R.string.no_local_audio_found))
+                            else UiState.Success(songs)
+                        }
+                    }
+                    else -> return@launch
                 }
-                else -> return@launch
-            }
-            _detailStack.value = _detailStack.value.map {
-                if (it.browseId == browseId) {
-                    it.copy(songs = state)
-                } else it
+                _detailStack.value = _detailStack.value.map {
+                    if (it.browseId == browseId) {
+                        it.copy(songs = state)
+                    } else it
+                }
+            } finally {
+                if (isPullToRefresh) {
+                    _isRefreshingLocalMusic.value = false
+                }
             }
         }
     }

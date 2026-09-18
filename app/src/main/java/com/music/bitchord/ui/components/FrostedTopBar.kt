@@ -123,10 +123,11 @@ fun FrostedTopBar(
     // the caller would recompose the whole app on each one.
     pullFraction: () -> Float = { 0f },
     actions: @Composable () -> Unit = {},
+    alwaysShowTitle: Boolean = true,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val titleAlpha by animateFloatAsState(
-        targetValue = if (scrolled) 1f else 0f,
+        targetValue = if (alwaysShowTitle || scrolled) 1f else 0f,
         animationSpec = tween(220),
         label = "topBarTitleAlpha",
     )
@@ -146,7 +147,7 @@ fun FrostedTopBar(
             .fillMaxWidth()
             .then(
                 if (reduceDynamicBlur) Modifier.background(MaterialTheme.colorScheme.surface)
-                else Modifier,
+                else Modifier.background(MaterialTheme.colorScheme.background.copy(alpha = 0.92f)),
             ),
     ) {
         Box(
@@ -157,7 +158,7 @@ fun FrostedTopBar(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

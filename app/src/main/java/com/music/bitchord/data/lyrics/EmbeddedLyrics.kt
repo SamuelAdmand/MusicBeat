@@ -2,6 +2,8 @@ package com.music.bitchord.data.lyrics
 
 import android.content.Context
 import android.net.Uri
+import android.os.ParcelFileDescriptor
+import com.kyant.taglib.TagLib
 import com.music.bitchord.data.DebugLog as Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -67,15 +69,64 @@ object EmbeddedLyrics {
      */
     suspend fun forUri(context: Context, uriString: String): List<LyricLine>? =
         withContext(Dispatchers.IO) {
-            val raw = runCatching { read(context, Uri.parse(uriString)) }
+            val uri = parseUri(uriString)
+            val raw = runCatching { read(context, uri) }
                 .onFailure { Log.d(TAG, "no embedded lyrics in $uriString: ${it.message}") }
                 .getOrNull()
                 ?: return@withContext null
-            // The same last pass the network sources get, so a downloaded track
-            // and a streamed one draw their backing vocals the same way.
-            LrcLib.parseLrc(raw).takeIf { lines -> lines.any { it.text.isNotBlank() } }
+            parseLyrics(raw)
+                .takeIf { lines -> lines.any { it.text.isNotBlank() } }
                 ?.withBackgroundVocals()
         }
+
+    /**
+     * Converts raw lyrics into [LyricLine]s, supporting both synced LRC
+     * and unsynced plain-text lyrics.
+     */
+    fun parseLyrics(raw: String): List<LyricLine> {
+        if (raw.isBlank()) return emptyList()
+        val synced = LrcLib.parseLrc(raw)
+        if (synced.any { !it.isGap && it.text.isNotBlank() }) {
+            return synced
+        }
+        return parseUnsynced(raw)
+    }
+
+    /**
+     * Parses unsynced plain-text lyrics into lines with [LyricLine.timeMs] set to 0.
+     */
+    fun parseUnsynced(text: String): List<LyricLine> {
+        val lines = text.lines()
+        val result = mutableListOf<LyricLine>()
+        var lastWasGap = false
+
+        for (rawLine in lines) {
+            val line = rawLine.trim()
+            if (line.isEmpty()) {
+                if (!lastWasGap && result.isNotEmpty()) {
+                    result.add(LyricLine(timeMs = 0L, text = ""))
+                    lastWasGap = true
+                }
+            } else {
+                result.add(LyricLine(timeMs = 0L, text = line))
+                lastWasGap = false
+            }
+        }
+
+        while (result.isNotEmpty() && result.first().isGap) result.removeAt(0)
+        while (result.isNotEmpty() && result.last().isGap) result.removeAt(result.lastIndex)
+
+        return result
+    }
+
+    private fun parseUri(uriString: String): Uri {
+        return if (uriString.startsWith("/")) {
+            Uri.fromFile(File(uriString))
+        } else {
+            val parsed = Uri.parse(uriString)
+            if (parsed.scheme == null) Uri.fromFile(File(uriString)) else parsed
+        }
+    }
 
     /** The raw LRC text for the file, preferring this app's word-timed field. */
     private fun read(context: Context, uri: Uri): String? {
@@ -84,8 +135,45 @@ object EmbeddedLyrics {
         } else {
             resolveFilePath(context, uri)
         }
-        return sidecar(path) ?: open(context, uri)?.use { fromBytes(it.readAtMost(MAX_TAG_BYTES)) }
+        // 1. Companion / sidecar .lrc file
+        sidecar(path)?.let { return it }
+
+        // 2. Direct binary container scan (fast for FLAC, MP4, WebM with BITCHORD_LYRICS word sync)
+        val fromContainer = open(context, uri)?.use { fromBytes(it.readAtMost(MAX_TAG_BYTES)) }
+        if (!fromContainer.isNullOrBlank()) {
+            return fromContainer
+        }
+
+        // 3. TagLib metadata inspection (supports MP3 ID3v2 USLT/COMM/TXXX, FLAC, M4A, OGG, OPUS, WAV)
+        val fromTagLib = readWithTagLib(context, uri, path)
+        if (!fromTagLib.isNullOrBlank()) {
+            return fromTagLib
+        }
+
+        return null
     }
+
+    private fun readWithTagLib(context: Context, uri: Uri, path: String?): String? = runCatching {
+        val pfd = openFileDescriptor(context, uri, path) ?: return@runCatching null
+        pfd.use { desc ->
+            val metadata = TagLib.getMetadata(desc.dup().detachFd(), false)
+            val props = metadata?.propertyMap.orEmpty()
+            props["BITCHORD_LYRICS"]?.firstOrNull()?.takeIf { it.isNotBlank() }
+                ?: props["LYRICS"]?.firstOrNull()?.takeIf { it.isNotBlank() }
+                ?: props["UNSYNCEDLYRICS"]?.firstOrNull()?.takeIf { it.isNotBlank() }
+        }
+    }.onFailure { Log.d(TAG, "TagLib could not read $uri: ${it.message}") }.getOrNull()
+
+    private fun openFileDescriptor(context: Context, uri: Uri, path: String?): ParcelFileDescriptor? = runCatching {
+        if (uri.scheme == "file" && uri.path != null) {
+            val file = File(uri.path!!)
+            if (file.exists()) ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY) else null
+        } else if (uri.scheme == "content") {
+            context.contentResolver.openFileDescriptor(uri, "r")
+        } else if (!path.isNullOrBlank() && File(path).exists()) {
+            ParcelFileDescriptor.open(File(path), ParcelFileDescriptor.MODE_READ_ONLY)
+        } else null
+    }.getOrNull()
 
     private fun resolveFilePath(context: Context, uri: Uri): String? = runCatching {
         if (uri.scheme == "file") return uri.path
