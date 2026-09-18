@@ -3,37 +3,34 @@
 <br/>
 <br/>
 
-<img src="Logo.png" alt="BitChord app icon" width="200" />
+<img src="Logo.png" alt="MusicBeat app icon" width="200" />
 
-# BitChord
+# MusicBeat
 
-### Aesthetic YouTube Music Client
-
-<br/>
-
-[![Latest release](https://img.shields.io/github/v/release/kushagrasinghx/BitChord?style=for-the-badge&labelColor=0d1117)](https://github.com/kushagrasinghx/BitChord/releases)
-[![License](https://img.shields.io/github/license/kushagrasinghx/BitChord?style=for-the-badge&labelColor=0d1117)](https://github.com/kushagrasinghx/BitChord/blob/main/LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/kushagrasinghx/BitChord/total?style=for-the-badge&labelColor=0d1117)](https://github.com/kushagrasinghx/BitChord/releases)
+### Aesthetic YouTube Music & Local Music Player for Android
 
 <br/>
 
-[**Download**](#download) · [**Features**](#features) · [**Support**](#support) · [**Disclaimer**](#disclaimer)
+[![Latest release](https://img.shields.io/github/v/release/SamuelAdmand/MusicBeat?style=for-the-badge&labelColor=0d1117)](https://github.com/SamuelAdmand/MusicBeat/releases)
+[![Forked from kushagrasinghx/BitChord](https://img.shields.io/badge/Forked%20From-kushagrasinghx%2FBitChord-blue?style=for-the-badge&labelColor=0d1117)](https://github.com/kushagrasinghx/BitChord)
+[![License](https://img.shields.io/github/license/SamuelAdmand/MusicBeat?style=for-the-badge&labelColor=0d1117)](LICENSE)
 
 <br/>
 
-<a href="https://trendshift.io/repositories/177639?utm_source=trendshift-badge&utm_medium=badge&utm_campaign=badge-trendshift-177639" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/177639/daily?language=Kotlin" alt="kushagrasinghx%2FBitChord | Trendshift" width="250" height="55"/></a>
-<a href="https://trendshift.io/repositories/177639?utm_source=trendshift-badge&utm_medium=badge&utm_campaign=badge-trendshift-177639" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/177639/weekly?language=Kotlin" alt="kushagrasinghx%2FBitChord | Trendshift" width="250" height="55"/></a>
+[**Download**](#download) · [**OnePlus Audio Whitelist**](#oneplus-hardware-audio-enhancement) · [**Features**](#features) · [**Credits**](#credits-and-attribution)
 
 </div>
 
-> [!WARNING]
-> BitChord is not affiliated with, endorsed by, or connected to YouTube or Google in any way. Use it at your own discretion.
+---
+
+> [!NOTE]
+> **MusicBeat** is an enhanced, community-driven fork of [BitChord](https://github.com/kushagrasinghx/BitChord) by [Kushagrasinghx](https://github.com/kushagrasinghx). It provides a polished Material 3 experience with lossless audio, word-synced lyrics, and specialized variants tailored for hardware equalizers (Dolby Atmos / Dirac) on OnePlus and OPPO devices.
 
 ---
 
 <div align="center">
 
-<img src="Banner.png" alt="BitChord banner" width="100%" />
+<img src="Banner.png" alt="MusicBeat banner" width="100%" />
 
 <h1><a id="features"></a>Features</h1>
 
@@ -41,36 +38,30 @@
   <tr>
     <td width="50%" valign="top">
 
-#### Playback
-- **Search, browse and play** anything available on YouTube Music.
-- **Hi-Res lossless audio** — FLAC/ALAC from a configured module source, with YouTube Music as fallback.
-- **Gapless playback with true crossfade**, adjustable 0–12s.
-- **Automix [Beta]** — DJ-style transitions with beat-matching and tempo-stretching.
+#### 🎧 Playback & Audio
+- **Search, browse, and stream** the entire YouTube Music catalog.
+- **Hi-Res lossless audio** — stream FLAC/ALAC from configured module sources with YouTube Music fallback.
+- **Hardware audio enhancement support** — native Dolby Atmos & Dirac integration on OnePlus/OPPO devices.
+- **Gapless playback with adjustable crossfade** (0–12s).
+- **Automix [Beta]** — transition between tracks with on-device tempo matching.
+- **Local music library** integration with fast tagging and cover management.
+- **Fast Scroller with Alphabet Indicator** — Material Design 2 teardrop bubble perfectly synchronized with viewport items.
 - **Offline downloads** — save tracks with embedded metadata.
-- **Local music library** integration.
-- **Background playback** via a proper foreground media session.
-
-#### Experience
-- **Animated album canvas** — motion artwork on the now-playing screen.
-- **Word-synced lyrics** — word/syllable-level highlighting from multiple sources.
-- **Dynamic, artwork-driven theming** — Material palette extracted from album art.
-- **Frosted-glass UI** — Telegram-style translucent bars via Haze, Material 3 theming.
 
     </td>
     <td width="50%" valign="top">
 
-#### Connectivity & Accounts
-- **Sign in with your Google account** for personalized content.
-- **Discord Rich Presence** — in-app login, live track/artist/album and progress.
-- **Scrobbling** to Last.fm and ListenBrainz.
-- **Pluggable sources** — add, edit, test and health-check module sources.
+#### 🎨 Design & Experience
+- **Animated album canvas** — fluid motion artwork on the now-playing screen.
+- **Word-synced lyrics** — syllable-level highlighting from multiple scrapers & embedded tags.
+- **Dynamic artwork-driven theming** — extracted Material 3 palette.
+- **Frosted-glass UI** — translucent frosted bars powered by Haze.
 
-#### Controls & Tweaks
-- **Per-network audio quality** — separate quality ceilings for Wi-Fi and mobile data.
-- **Playback speed control** (0.5×–2.0×) and **skip silence**.
-- **Sleep timer** — fixed presets or "stop after this track".
-- **System equalizer** integration.
-- **Stats for nerds** — codec, bit depth, sample rate, and more on the now-playing screen.
+#### 🌐 Connectivity & Controls
+- **Discord Rich Presence** — live track, artist, album art, and progress.
+- **Scrobbling** to Last.fm and ListenBrainz.
+- **System equalizer integration**.
+- **Stats for nerds** — codec, bit depth, sample rate, and real-time audio pipeline metrics.
 
     </td>
   </tr>
@@ -80,48 +71,72 @@
 
 ---
 
-<div align="center">
+## ⚡ OnePlus Hardware Audio Enhancement
 
-<h1><a id="download"></a>Download</h1>
+OxygenOS and ColorOS (OnePlus, OPPO, and Realme devices) enforce a strict system-level whitelist for their built-in audio enhancement DSP engines (**Dolby Atmos**, **Dirac Audio**, and **OReality**). Unlisted third-party players cannot access these system equalizers.
 
-Grab the latest signed APK from the [Releases](https://github.com/kushagrasinghx/BitChord/releases) page. Sideloading requires enabling "Install unknown apps" for whichever app you download it with.
+To bypass this restriction without root, **MusicBeat** provides dedicated releases packaged under whitelisted IDs:
 
-</div>
+| Edition | Application ID (`package`) | Supported Devices & Benefits |
+| :--- | :--- | :--- |
+| **Standard Edition** | `com.samuel.musicbeat` | Recommended for all general Android devices (Google Pixel, Samsung Galaxy, Xiaomi, Motorola, etc.). |
+| **OnePlus (QQ Music)** | `com.tencent.qqmusic` | **OnePlus, OPPO, Realme** devices — unlocks native hardware **Dolby Atmos / Dirac** sound enhancement profiles. |
+| **OnePlus (KuGou)** | `com.kugou.android` | Alternative whitelisted package for OnePlus/OPPO devices. |
+
+---
+
+## 📥 <a id="download"></a>Download
+
+Get the latest signed APKs directly from the [**Releases**](https://github.com/SamuelAdmand/MusicBeat/releases) page.
+
+| Architecture | Recommendation |
+| :--- | :--- |
+| **`arm64-v8a`** | **Recommended (99% of modern Android devices)**. Smaller download size and optimized 64-bit native binaries. |
+| **`universal`** | Compatible with all devices and architectures. |
+| **`armeabi-v7a`** | Older 32-bit devices. |
+| **`x86_64`** | Emulators and Intel/AMD-based Android tablets or ChromeOS. |
+
+---
+
+## 🛠️ Building from Source
+
+### Prerequisites
+- JDK 17 (Eclipse Temurin recommended)
+- Android SDK Platform 34+ and CMake 3.22.1
+
+### Build Commands
+
+```bash
+# Clone the repository
+git clone https://github.com/SamuelAdmand/MusicBeat.git
+cd MusicBeat
+
+# Build Standard Edition Release
+./gradlew assembleStandardRelease
+
+# Build OnePlus Audio Whitelist Editions
+./gradlew assembleQqmusicRelease
+./gradlew assembleKugouRelease
+
+# Build Debug APK for quick local testing
+./gradlew assembleDevDebug
+```
+
+---
+
+## 🤝 <a id="credits-and-attribution"></a>Credits and Attribution
+
+MusicBeat is built upon the exceptional work of the open-source community:
+
+- **[BitChord](https://github.com/kushagrasinghx/BitChord)** — Created by **[Kushagra Singh](https://github.com/kushagrasinghx)**. All core music streaming, decoding, and client architecture originated in BitChord. Full credit and gratitude go to Kushagra and the BitChord contributors.
+- **[Booming Music](https://github.com/mardous/BoomingMusic)** — Reference for Material Design 2 fast scroller and teardrop indicator design.
+- **[NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor)** — YouTube streaming stream resolution and metadata parsing.
+- **[TagLib](https://github.com/kyant0/taglib)** — High-performance native audio tag parsing.
 
 ---
 
 <div align="center">
 
-<h1><a id="support"></a>Support</h1>
-
-BitChord is free and always will be — if it's earned a spot in your rotation, you can chip in here:
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/kushagrasinghx)
-[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/kuxhagrasingh)
-
-</div>
-
----
-
-<div align="center">
-
-<h1><a id="disclaimer"></a>Disclaimer & Legal Notice</h1>
-
-BitChord is an independent, community-driven third-party audio player and client. It is **not** associated with Google LLC, YouTube Music, Deezer, Telegram, or any of their parent companies.
-
-* **No Media Hosting:** BitChord does not host, upload, or store copyrighted music files. It operates strictly as an interface to scan local device storage or stream media directly from public, public-facing, or user-authenticated APIs.
-* **Fair Use & API Usage:** This software is created solely for personal research, educational, and fair-use purposes. The user is entirely responsible for ensuring their usage aligns with their local copyright laws and YouTube Terms of Service.
-* **No Ad-Blocking Guarantee:** While BitChord focuses on providing a clean listening environment, it does not guarantee permanent bypasses or modifications to commercial third-party platform conditions.
-* **Copyleft:** BitChord is free software under the GPLv3. The license does not let anyone forbid others from selling or redistributing copies, but any distribution must come with the Corresponding Source under the same license.
-
-</div>
-
----
-
-<div align="center">
-
-<h1><a id="license"></a>License</h1>
-
-This project is licensed under the **GNU General Public License v3.0 (GPLv3)**. See the [LICENSE](LICENSE) file for details.
+Made with ❤️ for music lovers everywhere.
 
 </div>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BitChord</string>
+    <string name="app_name">MusicBeat</string>
     <string name="playback_channel_name">再生中</string>
     <string name="download_channel_name">ダウンロード</string>
     <string name="download_channel_description">ミュージックフォルダに保存中の曲</string>
@@ -91,10 +91,10 @@
     <string name="dolby_atmos_open_failed">Dolby Atmosの設定を開けませんでした</string>
     <string name="update_available">アップデートが利用可能です：v%1$s</string>
     <string name="software_update">ソフトウェアアップデート</string>
-    <string name="update_available_body">bitchord %1$s がダウンロード可能です。</string>
-    <string name="update_downloading_body">bitchord %1$s をダウンロード中…</string>
-    <string name="update_ready_body">bitchord %1$s のインストール準備ができました。</string>
-    <string name="update_failed_body">bitchord %1$s をダウンロードできませんでした。</string>
+    <string name="update_available_body">musicbeat %1$s がダウンロード可能です。</string>
+    <string name="update_downloading_body">musicbeat %1$s をダウンロード中…</string>
+    <string name="update_ready_body">musicbeat %1$s のインストール準備ができました。</string>
+    <string name="update_failed_body">musicbeat %1$s をダウンロードできませんでした。</string>
     <string name="download_now">今すぐダウンロード</string>
     <string name="install_now">今すぐインストール</string>
     <string name="later">後で</string>
@@ -122,7 +122,7 @@
     <string name="widget_previous">前へ</string>
     <string name="widget_artwork">アルバムアート</string>
     <string name="widget_nothing_played">まだ何も再生されていません</string>
-    <string name="widget_open_bitchord">BitChordを開く</string>
+    <string name="widget_open_bitchord">MusicBeatを開く</string>
     <string name="widget_preview_title">曲名</string>
     <string name="widget_preview_artist">アーティスト</string>
     <string name="download_quality">ダウンロード品質</string>
@@ -145,7 +145,7 @@
     <string name="cancel_all">すべてキャンセル</string>
     <string name="language">言語</string>
     <string name="app_language">アプリの言語</string>
-    <string name="app_language_description">BitChordで使用する言語を選択してください。</string>
+    <string name="app_language_description">MusicBeatで使用する言語を選択してください。</string>
     <string name="english">英語</string>
     <string name="spanish">スペイン語</string>
     <string name="french">フランス語</string>
@@ -226,10 +226,10 @@
     <string name="beta">ベータ</string>
     <string name="refresh_rate">リフレッシュレート</string>
     <string name="high_performance_before_enabling">有効にする前に</string>
-    <string name="high_performance_battery_warning">まずBitChordのバッテリー使用を「制限なし」に設定してください。リフレッシュレートを上げるとバッテリー、CPU、GPUの消費が増え、デバイスが熱くなることがあります。</string>
+    <string name="high_performance_battery_warning">まずMusicBeatのバッテリー使用を「制限なし」に設定してください。リフレッシュレートを上げるとバッテリー、CPU、GPUの消費が増え、デバイスが熱くなることがあります。</string>
     <string name="open_battery_settings">バッテリー設定を開く</string>
     <string name="enable_high_performance_title">高パフォーマンスモードを有効にしますか？</string>
-    <string name="enable_high_performance_confirmation">BitChordのバッテリー使用が「制限なし」に設定されている場合のみ有効にしてください。デバイスが熱くなったり電力が少なくなったりすると、Androidがリフレッシュレートを制限することがあります。</string>
+    <string name="enable_high_performance_confirmation">MusicBeatのバッテリー使用が「制限なし」に設定されている場合のみ有効にしてください。デバイスが熱くなったり電力が少なくなったりすると、Androidがリフレッシュレートを制限することがあります。</string>
     <string name="enable">有効にする</string>
     <string name="not_yet">今はしない</string>
     <string name="activity">アクティビティ</string>
@@ -264,7 +264,7 @@
     <string name="discord_button_variables">{song_name}、{artist_name}、{album_name}は現在の曲に置き換えられます。</string>
     <string name="discord_buttons_footer">{song_name}、{artist_name}、{album_name}は曲の情報に置き換えられます。1つ目のボタンはYouTube Musicで曲を開き、2つ目はこのプロジェクトを開きます。</string>
     <string name="discord_presence_footer">曲、再生位置、再生状態が変わるとカードが更新されます。再生が止まると消去されます。</string>
-    <string name="discord_sign_in_footer">ログインするとDiscordのログインページが開きます。BitChordに何かが入力されることはありません。</string>
+    <string name="discord_sign_in_footer">ログインするとDiscordのログインページが開きます。MusicBeatに何かが入力されることはありません。</string>
     <string name="discord_token">Discordトークン</string>
     <string name="discord_token_description">Discordアカウントトークンを貼り付けてください。このデバイス内で暗号化され、Discordにのみ送信されます。</string>
     <string name="discord_token_rejected">Discordがそのトークンを拒否しました。</string>
@@ -317,7 +317,7 @@
     <string name="downloads_finished">ダウンロード · 完了</string>
     <string name="downloading_progress">ダウンロード中 · %1$d%%</string>
     <string name="starting">開始しています</string>
-    <string name="saved_to_bitchord_folder">Music/BitChordに保存済み</string>
+    <string name="saved_to_bitchord_folder">Music/MusicBeatに保存済み</string>
     <string name="nothing_downloading">ダウンロード中の項目はありません</string>
     <string name="nothing_to_explore">現在探索できるものはありません</string>
     <string name="no_youtube_music_results">YouTube Musicからの結果はありません</string>
@@ -435,7 +435,7 @@
     <string name="signing_in">ログイン中…</string>
     <string name="sleep_timer">スリープタイマー</string>
     <string name="sources_no_lossless">有効なソースの中にロスレスオーディオを提供できるものがありません。トランスコードなしでロスレスファイルを再生するにはカスタムモジュールを追加してください。</string>
-    <string name="sources_order_footer">ソースにトラックがない、またはアクセスできない場合、BitChordは次のソースを試します。YouTubeより上のソースは、より良いバージョンが見つかった場合にその録音を置き換えられます。</string>
+    <string name="sources_order_footer">ソースにトラックがない、またはアクセスできない場合、MusicBeatは次のソースを試します。YouTubeより上のソースは、より良いバージョンが見つかった場合にその録音を置き換えられます。</string>
     <string name="sources_order_header">ソース（この順番で試行）</string>
     <string name="sources_quality_capped">この接続は「高音質」より低く設定されているため、ストリームはその上限に合わせてトランスコードされます。ダウンロードには影響しません。</string>
     <string name="sources_subtitle">音声の取得元と使用する順序</string>
@@ -469,7 +469,7 @@
     <string name="biggest_day_note">最も聴いた日は%1$sで、%2$sの再生時間でした。</string>
     <string name="close_replay">Replayを閉じる</string>
     <string name="couldnt_draw_picture">画像を作成できませんでした</string>
-    <string name="default_replay_holder">BitChordリスナー</string>
+    <string name="default_replay_holder">MusicBeatリスナー</string>
     <string name="different_albums">さまざまなアルバム</string>
     <string name="genres_pending">再生履歴が増えるとジャンルが表示されます</string>
     <string name="hour_am">午前%1$d時</string>
@@ -495,7 +495,7 @@
     <string name="replay_artist_end">に何度も戻ってきました。</string>
     <string name="replay_artist_focus">1組のアーティスト</string>
     <string name="replay_artist_start">今月はずっと、</string>
-    <string name="replay_empty_description">もう少し聴くと、BitChordがあなたの履歴からReplayを作成します。</string>
+    <string name="replay_empty_description">もう少し聴くと、MusicBeatがあなたの履歴からReplayを作成します。</string>
     <string name="replay_genre_end">があなたのサウンドを形作りました。</string>
     <string name="replay_genre_focus">あなたのジャンル</string>
     <string name="replay_genre_start">合わせて、</string>
@@ -579,7 +579,7 @@
     </plurals>
     <string name="no_local_albums">ここにはまだアルバムやプレイリストに属するものがありません。完全なアルバムやプレイリストをダウンロードするとここに表示されます。</string>
     <string name="play_your_replay">あなたのReplayを再生</string>
-    <string name="counted_on_device_with_bitchord">BitChordでこのデバイス内で集計</string>
+    <string name="counted_on_device_with_bitchord">MusicBeatでこのデバイス内で集計</string>
     <string name="this_month">今月</string>
     <string name="this_year">今年</string>
     <string name="all_time">すべての期間</string>

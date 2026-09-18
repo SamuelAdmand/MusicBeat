@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BitChord</string>
+    <string name="app_name">MusicBeat</string>
     <string name="playback_channel_name">Now playing</string>
     <string name="download_channel_name">Downloads</string>
     <string name="download_channel_description">Songs being saved to your Music folder</string>
@@ -102,10 +102,10 @@
     <string name="dolby_atmos_open_failed">Couldn’t open Dolby Atmos settings</string>
     <string name="update_available">Update available: v%1$s</string>
     <string name="software_update">Software Update</string>
-    <string name="update_available_body">bitchord %1$s is available to download.</string>
-    <string name="update_downloading_body">Downloading bitchord %1$s…</string>
-    <string name="update_ready_body">bitchord %1$s is ready to install.</string>
-    <string name="update_failed_body">Couldn’t download bitchord %1$s.</string>
+    <string name="update_available_body">musicbeat %1$s is available to download.</string>
+    <string name="update_downloading_body">Downloading musicbeat %1$s…</string>
+    <string name="update_ready_body">musicbeat %1$s is ready to install.</string>
+    <string name="update_failed_body">Couldn’t download musicbeat %1$s.</string>
     <string name="download_now">Download Now</string>
     <string name="install_now">Install Now</string>
     <string name="later">Later</string>
@@ -123,7 +123,7 @@
     <string name="personalized_recommendations">Get personalized recommendations for you</string>
     <string name="play_next">Play next</string>
     <string name="queue">Queue</string>
-    <string name="source_unrecognised">BitChord could not tell what that link is</string>
+    <string name="source_unrecognised">MusicBeat could not tell what that link is</string>
     <string name="source_already_added">Already added as %1$s</string>
     <string name="source_setup_required">Tap to finish setting up</string>
     <string name="source_skipped_by_quality">Not used on %1$s · quality is set to %2$s</string>
@@ -140,7 +140,7 @@
     <string name="widget_previous">Previous</string>
     <string name="widget_artwork">Album art</string>
     <string name="widget_nothing_played">Nothing played yet</string>
-    <string name="widget_open_bitchord">Open BitChord</string>
+    <string name="widget_open_bitchord">Open MusicBeat</string>
     <string name="widget_preview_title">Song title</string>
     <string name="widget_preview_artist">Artist</string>
     <string name="download_quality">Download quality</string>
@@ -170,7 +170,7 @@
     <string name="cancel_all">Cancel all</string>
     <string name="language">Language</string>
     <string name="app_language">App language</string>
-    <string name="app_language_description">Choose the language used by BitChord.</string>
+    <string name="app_language_description">Choose the language used by MusicBeat.</string>
     <string name="english">English</string>
     <string name="spanish">Spanish</string>
     <string name="french">French</string>
@@ -258,10 +258,10 @@
     <string name="beta">Beta</string>
     <string name="refresh_rate">Refresh rate</string>
     <string name="high_performance_before_enabling">Before enabling</string>
-    <string name="high_performance_battery_warning">First set BitChord\'s battery usage to Unrestricted. Higher refresh rates use more battery, CPU and GPU, and may warm your device.</string>
+    <string name="high_performance_battery_warning">First set MusicBeat\'s battery usage to Unrestricted. Higher refresh rates use more battery, CPU and GPU, and may warm your device.</string>
     <string name="open_battery_settings">Open battery settings</string>
     <string name="enable_high_performance_title">Enable high performance mode?</string>
-    <string name="enable_high_performance_confirmation">Enable only if BitChord\'s battery use is set to Unrestricted. Android can still limit the refresh rate when the device is hot or low on power.</string>
+    <string name="enable_high_performance_confirmation">Enable only if MusicBeat\'s battery use is set to Unrestricted. Android can still limit the refresh rate when the device is hot or low on power.</string>
     <string name="enable">Enable</string>
     <string name="not_yet">Not yet</string>
     <string name="activity">Activity</string>
@@ -272,7 +272,7 @@
     <string name="activity_playing">Playing</string>
     <string name="activity_watching">Watching</string>
     <string name="add_addon">Add an addon</string>
-    <string name="add_addon_detail">Point BitChord at an addon server you host or were given a link to</string>
+    <string name="add_addon_detail">Point MusicBeat at an addon server you host or were given a link to</string>
     <string name="add_to_queue">Add to queue</string>
     <string name="after_this_song">After this song</string>
     <string name="always_on">Always on</string>
@@ -298,7 +298,7 @@
     <string name="discord_button_variables">{song_name}, {artist_name} and {album_name} are replaced with the current track.</string>
     <string name="discord_buttons_footer">{song_name}, {artist_name} and {album_name} are replaced with the track. The first button opens the song on YouTube Music and the second opens this project.</string>
     <string name="discord_presence_footer">The card updates when the track, position or playback state changes. It clears when playback stops.</string>
-    <string name="discord_sign_in_footer">Signing in opens Discord\'s login page. Nothing is typed into BitChord.</string>
+    <string name="discord_sign_in_footer">Signing in opens Discord\'s login page. Nothing is typed into MusicBeat.</string>
     <string name="discord_token">Discord token</string>
     <string name="discord_token_description">Paste your Discord account token. It stays encrypted on this device and is sent only to Discord.</string>
     <string name="discord_token_rejected">Discord rejected that token.</string>
@@ -354,7 +354,7 @@
     <string name="start_radio">Start radio</string>
     <string name="playing_radio">Playing %1$s Radio</string>
     <string name="radio_started">%1$s radio started</string>
-    <string name="saved_to_bitchord_folder">Saved to Music/BitChord</string>
+    <string name="saved_to_bitchord_folder">Saved to Music/MusicBeat</string>
     <string name="nothing_downloading">Nothing downloading</string>
     <string name="nothing_to_explore">Nothing to explore right now</string>
     <string name="no_youtube_music_results">No results from YouTube Music</string>
@@ -432,7 +432,7 @@
     <string name="max_delay_subtitle">Maximum scrobble delay in seconds</string>
     <string name="min_song_duration">Minimum song duration</string>
     <string name="min_song_duration_subtitle">Shorter songs will not scrobble</string>
-    <string name="addon_url_description">Paste the addon’s URL — either its root or its manifest.json. BitChord reads what it can search and stream, then asks it for tracks over plain HTTP.</string>
+    <string name="addon_url_description">Paste the addon’s URL — either its root or its manifest.json. MusicBeat reads what it can search and stream, then asks it for tracks over plain HTTP.</string>
     <string name="monthly_listeners">%1$s monthly listeners</string>
     <string name="name">Name</string>
     <string name="no_lyrics_for_track">No lyrics for this track</string>
@@ -484,7 +484,7 @@
     <string name="signing_in">Signing in…</string>
     <string name="sleep_timer">Sleep timer</string>
     <string name="sources_no_lossless">No enabled source can provide lossless audio. Add an addon to play lossless files without transcoding.</string>
-    <string name="sources_order_footer">If a source does not have a track or cannot be reached, BitChord tries the next one. Sources above YouTube can replace its recording when they return a better version.</string>
+    <string name="sources_order_footer">If a source does not have a track or cannot be reached, MusicBeat tries the next one. Sources above YouTube can replace its recording when they return a better version.</string>
     <string name="sources_order_header">Sources, tried in this order</string>
     <string name="sources_quality_capped">This connection is set below High quality, so streams are transcoded to fit that limit. Downloads are unaffected.</string>
     <string name="sources_subtitle">Where audio comes from and the order used</string>
@@ -519,7 +519,7 @@
     <string name="biggest_day_note">Your biggest day was %1$s with %2$s of listening.</string>
     <string name="close_replay">Close Replay</string>
     <string name="couldnt_draw_picture">Could not create the picture</string>
-    <string name="default_replay_holder">BitChord listener</string>
+    <string name="default_replay_holder">MusicBeat listener</string>
     <string name="different_albums">Different albums</string>
     <string name="genres_pending">Genres will appear as your listening history grows</string>
     <string name="hour_am">%1$d AM</string>
@@ -545,7 +545,7 @@
     <string name="replay_artist_end"> kept coming back.</string>
     <string name="replay_artist_focus">One artist</string>
     <string name="replay_artist_start">All month, </string>
-    <string name="replay_empty_description">Listen a little more and BitChord will turn your history into a Replay.</string>
+    <string name="replay_empty_description">Listen a little more and MusicBeat will turn your history into a Replay.</string>
     <string name="replay_genre_end"> shaped your sound.</string>
     <string name="replay_genre_focus">Your genres</string>
     <string name="replay_genre_start">Together, </string>
@@ -639,7 +639,7 @@
     </plurals>
     <string name="no_local_albums">Nothing here belongs to an album or playlist yet. Download a complete album or playlist and it will appear here.</string>
     <string name="play_your_replay">Play your Replay</string>
-    <string name="counted_on_device_with_bitchord">Counted on this device with BitChord</string>
+    <string name="counted_on_device_with_bitchord">Counted on this device with MusicBeat</string>
     <string name="this_month">This month</string>
     <string name="this_year">This year</string>
     <string name="all_time">All time</string>

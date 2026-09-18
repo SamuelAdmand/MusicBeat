@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BitChord</string>
+    <string name="app_name">MusicBeat</string>
     <string name="playback_channel_name">अभी चल रहा है</string>
     <string name="download_channel_name">डाउनलोड</string>
     <string name="download_channel_description">आपके संगीत फ़ोल्डर में सेव हो रहे गाने</string>
@@ -95,10 +95,10 @@
     <string name="dolby_atmos_open_failed">Dolby Atmos सेटिंग्स नहीं खोली जा सकीं</string>
     <string name="update_available">अपडेट उपलब्ध है: v%1$s</string>
     <string name="software_update">सॉफ़्टवेयर अपडेट</string>
-    <string name="update_available_body">bitchord %1$s डाउनलोड के लिए उपलब्ध है।</string>
-    <string name="update_downloading_body">bitchord %1$s डाउनलोड हो रहा है…</string>
-    <string name="update_ready_body">bitchord %1$s इंस्टॉल के लिए तैयार है।</string>
-    <string name="update_failed_body">bitchord %1$s डाउनलोड नहीं हो सका।</string>
+    <string name="update_available_body">musicbeat %1$s डाउनलोड के लिए उपलब्ध है।</string>
+    <string name="update_downloading_body">musicbeat %1$s डाउनलोड हो रहा है…</string>
+    <string name="update_ready_body">musicbeat %1$s इंस्टॉल के लिए तैयार है।</string>
+    <string name="update_failed_body">musicbeat %1$s डाउनलोड नहीं हो सका।</string>
     <string name="download_now">अभी डाउनलोड करें</string>
     <string name="install_now">अभी इंस्टॉल करें</string>
     <string name="later">बाद में</string>
@@ -126,7 +126,7 @@
     <string name="widget_previous">पिछला</string>
     <string name="widget_artwork">एल्बम आर्ट</string>
     <string name="widget_nothing_played">अभी तक कुछ नहीं चलाया गया</string>
-    <string name="widget_open_bitchord">BitChord खोलें</string>
+    <string name="widget_open_bitchord">MusicBeat खोलें</string>
     <string name="widget_preview_title">गाने का शीर्षक</string>
     <string name="widget_preview_artist">कलाकार</string>
     <string name="download_quality">डाउनलोड क्वालिटी</string>
@@ -149,7 +149,7 @@
     <string name="cancel_all">सभी रद्द करें</string>
     <string name="language">भाषा</string>
     <string name="app_language">ऐप की भाषा</string>
-    <string name="app_language_description">BitChord द्वारा उपयोग की जाने वाली भाषा चुनें।</string>
+    <string name="app_language_description">MusicBeat द्वारा उपयोग की जाने वाली भाषा चुनें।</string>
     <string name="english">अंग्रेज़ी</string>
     <string name="spanish">स्पैनिश</string>
     <string name="french">फ़्रेंच</string>
@@ -230,10 +230,10 @@
     <string name="beta">बीटा</string>
     <string name="refresh_rate">रिफ़्रेश रेट</string>
     <string name="high_performance_before_enabling">चालू करने से पहले</string>
-    <string name="high_performance_battery_warning">पहले BitChord की बैटरी उपयोग सेटिंग को “अप्रतिबंधित” पर सेट करें। ज़्यादा रिफ़्रेश रेट ज़्यादा बैटरी, CPU और GPU इस्तेमाल करते हैं, और इससे आपका डिवाइस गर्म हो सकता है।</string>
+    <string name="high_performance_battery_warning">पहले MusicBeat की बैटरी उपयोग सेटिंग को “अप्रतिबंधित” पर सेट करें। ज़्यादा रिफ़्रेश रेट ज़्यादा बैटरी, CPU और GPU इस्तेमाल करते हैं, और इससे आपका डिवाइस गर्म हो सकता है।</string>
     <string name="open_battery_settings">बैटरी सेटिंग्स खोलें</string>
     <string name="enable_high_performance_title">हाई परफ़ॉर्मेंस मोड चालू करें?</string>
-    <string name="enable_high_performance_confirmation">इसे तभी चालू करें जब BitChord की बैटरी उपयोग सेटिंग “अप्रतिबंधित” पर हो। डिवाइस गर्म होने या पावर कम होने पर Android फिर भी रिफ़्रेश रेट सीमित कर सकता है।</string>
+    <string name="enable_high_performance_confirmation">इसे तभी चालू करें जब MusicBeat की बैटरी उपयोग सेटिंग “अप्रतिबंधित” पर हो। डिवाइस गर्म होने या पावर कम होने पर Android फिर भी रिफ़्रेश रेट सीमित कर सकता है।</string>
     <string name="enable">चालू करें</string>
     <string name="not_yet">अभी नहीं</string>
     <string name="activity">एक्टिविटी</string>
@@ -268,7 +268,7 @@
     <string name="discord_button_variables">{song_name}, {artist_name} और {album_name} की जगह मौजूदा ट्रैक की जानकारी आ जाती है।</string>
     <string name="discord_buttons_footer">{song_name}, {artist_name} और {album_name} की जगह ट्रैक की जानकारी आ जाती है। पहला बटन गाने को YouTube Music पर खोलता है और दूसरा इस प्रोजेक्ट को खोलता है।</string>
     <string name="discord_presence_footer">ट्रैक, पोज़िशन या प्लेबैक स्थिति बदलने पर कार्ड अपडेट होता है। प्लेबैक रुकने पर यह साफ़ हो जाता है।</string>
-    <string name="discord_sign_in_footer">साइन इन करने पर Discord का लॉगिन पेज खुलता है। BitChord में कुछ भी टाइप नहीं किया जाता।</string>
+    <string name="discord_sign_in_footer">साइन इन करने पर Discord का लॉगिन पेज खुलता है। MusicBeat में कुछ भी टाइप नहीं किया जाता।</string>
     <string name="discord_token">Discord टोकन</string>
     <string name="discord_token_description">अपना Discord खाता टोकन पेस्ट करें। यह इस डिवाइस पर एन्क्रिप्टेड रहता है और केवल Discord को भेजा जाता है।</string>
     <string name="discord_token_rejected">Discord ने वह टोकन अस्वीकार कर दिया।</string>
@@ -321,7 +321,7 @@
     <string name="downloads_finished">डाउनलोड · पूरे हुए</string>
     <string name="downloading_progress">डाउनलोड हो रहा है · %1$d%%</string>
     <string name="starting">शुरू हो रहा है</string>
-    <string name="saved_to_bitchord_folder">Music/BitChord में सेव किया गया</string>
+    <string name="saved_to_bitchord_folder">Music/MusicBeat में सेव किया गया</string>
     <string name="nothing_downloading">कुछ भी डाउनलोड नहीं हो रहा</string>
     <string name="nothing_to_explore">अभी एक्सप्लोर करने के लिए कुछ नहीं है</string>
     <string name="no_youtube_music_results">YouTube Music से कोई नतीजे नहीं मिले</string>
@@ -448,7 +448,7 @@
     <string name="signing_in">साइन इन हो रहा है…</string>
     <string name="sleep_timer">स्लीप टाइमर</string>
     <string name="sources_no_lossless">कोई भी चालू स्रोत लॉसलेस ऑडियो नहीं दे सकता। बिना ट्रांसकोडिंग के उपलब्ध लॉसलेस फ़ाइलें चलाने के लिए कस्टम मॉड्यूल जोड़ें।</string>
-    <string name="sources_order_footer">अगर किसी स्रोत के पास कोई ट्रैक नहीं है या उस तक पहुंचा नहीं जा सकता, तो BitChord अगला स्रोत आज़माता है। YouTube से ऊपर के स्रोत बेहतर वर्शन मिलने पर उसकी रिकॉर्डिंग बदल सकते हैं।</string>
+    <string name="sources_order_footer">अगर किसी स्रोत के पास कोई ट्रैक नहीं है या उस तक पहुंचा नहीं जा सकता, तो MusicBeat अगला स्रोत आज़माता है। YouTube से ऊपर के स्रोत बेहतर वर्शन मिलने पर उसकी रिकॉर्डिंग बदल सकते हैं।</string>
     <string name="sources_order_header">स्रोत, इसी क्रम में आज़माए जाते हैं</string>
     <string name="sources_quality_capped">यह कनेक्शन हाई क्वालिटी से नीचे सेट है, इसलिए स्ट्रीम को उस सीमा में फिट करने के लिए ट्रांसकोड किया जाता है। डाउनलोड पर कोई असर नहीं पड़ता।</string>
     <string name="sources_subtitle">ऑडियो कहां से आता है और किस क्रम में इस्तेमाल होता है</string>
@@ -483,7 +483,7 @@
     <string name="biggest_day_note">आपका सबसे बड़ा दिन %1$s था, जिसमें %2$s सुना गया।</string>
     <string name="close_replay">Replay बंद करें</string>
     <string name="couldnt_draw_picture">तस्वीर नहीं बन सकी</string>
-    <string name="default_replay_holder">BitChord श्रोता</string>
+    <string name="default_replay_holder">MusicBeat श्रोता</string>
     <string name="different_albums">अलग-अलग एल्बम</string>
     <string name="genres_pending">आपके सुनने का इतिहास बढ़ने पर शैलियां दिखेंगी</string>
     <string name="hour_am">%1$d AM</string>
@@ -509,7 +509,7 @@
     <string name="replay_artist_end"> बार-बार सुना गया।</string>
     <string name="replay_artist_focus">एक कलाकार</string>
     <string name="replay_artist_start">पूरे महीने, </string>
-    <string name="replay_empty_description">थोड़ा और सुनें और BitChord आपके इतिहास को एक Replay में बदल देगा।</string>
+    <string name="replay_empty_description">थोड़ा और सुनें और MusicBeat आपके इतिहास को एक Replay में बदल देगा।</string>
     <string name="replay_genre_end"> ने आपकी पसंद को आकार दिया।</string>
     <string name="replay_genre_focus">आपकी शैलियां</string>
     <string name="replay_genre_start">मिलकर, </string>
@@ -597,7 +597,7 @@
     </plurals>
     <string name="no_local_albums">यहां अभी तक कुछ भी किसी एल्बम या प्लेलिस्ट का हिस्सा नहीं है। पूरा एल्बम या प्लेलिस्ट डाउनलोड करें और यह यहां दिखेगा।</string>
     <string name="play_your_replay">अपना Replay चलाएं</string>
-    <string name="counted_on_device_with_bitchord">इस डिवाइस पर BitChord के साथ गिना गया</string>
+    <string name="counted_on_device_with_bitchord">इस डिवाइस पर MusicBeat के साथ गिना गया</string>
     <string name="this_month">इस महीने</string>
     <string name="this_year">इस साल</string>
     <string name="all_time">अब तक</string>

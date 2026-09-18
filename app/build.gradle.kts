@@ -39,7 +39,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.music.bitchord"
+        applicationId = "com.samuel.musicbeat"
         // 26 keeps reach wide; real-time blur (RenderEffect) kicks in on API 31+,
         // Haze falls back to a translucent scrim below that.
         minSdk = 26
@@ -70,37 +70,50 @@ android {
         }
     }
 
-    // applicationId can only be overridden per flavor, not per build type, so a
-    // dev/prod dimension exists purely to let both sit installed side by side
-    // on the same device instead of the dev build overwriting the prod one.
-    flavorDimensions += "env"
+    flavorDimensions += "distribution"
     productFlavors {
-        create("dev") {
-            dimension = "env"
-            applicationId = "com.dev.bitchord"
-            resValue("string", "app_name", "BitChord Dev")
+        create("standard") {
+            dimension = "distribution"
+            applicationId = "com.samuel.musicbeat"
+            resValue("string", "app_name", "MusicBeat")
         }
-        create("prod") {
-            dimension = "env"
-            // Matches defaultConfig — this is the package already shipped/installed.
+        // OnePlus / OPPO whitelisted package flavor 1: unlocks native Dolby Atmos / Dirac / OReality hardware audio enhancements
+        create("qqmusic") {
+            dimension = "distribution"
+            applicationId = "com.tencent.qqmusic"
+            resValue("string", "app_name", "MusicBeat")
+        }
+        // OnePlus / OPPO whitelisted package flavor 2: unlocks native hardware audio enhancements
+        create("kugou") {
+            dimension = "distribution"
+            applicationId = "com.kugou.android"
+            resValue("string", "app_name", "MusicBeat")
+        }
+        create("dev") {
+            dimension = "distribution"
+            applicationId = "com.dev.musicbeat"
+            resValue("string", "app_name", "MusicBeat Dev")
         }
     }
 
     signingConfigs {
-        // Both halves have to be there, not just the properties file: it *names*
-        // the keystore rather than containing it, and both are gitignored
-        // separately, so a checkout can easily end up with the one and not the
-        // other. A signing config pointing at a keystore that is not on disk
-        // fails the release build outright at validateSigningRelease — which is
-        // exactly the failure the unsigned fallback above exists to avoid, so
-        // the keystore has to be looked for rather than assumed.
-        val store = signing.getProperty("storeFile")?.let { rootProject.file(it) }
-        if (store != null && store.exists()) {
+        val storePath = System.getenv("KEYSTORE_FILE")
+            ?: signing.getProperty("storeFile")
+        val store = storePath?.let { rootProject.file(it) }
+        val sPassword = System.getenv("STORE_PASSWORD")
+            ?: System.getenv("KEYSTORE_PASSWORD")
+            ?: signing.getProperty("storePassword")
+        val kAlias = System.getenv("KEY_ALIAS")
+            ?: signing.getProperty("keyAlias")
+        val kPassword = System.getenv("KEY_PASSWORD")
+            ?: signing.getProperty("keyPassword")
+
+        if (store != null && store.exists() && sPassword != null && kAlias != null && kPassword != null) {
             create("release") {
                 storeFile = store
-                storePassword = signing.getProperty("storePassword")
-                keyAlias = signing.getProperty("keyAlias")
-                keyPassword = signing.getProperty("keyPassword")
+                storePassword = sPassword
+                keyAlias = kAlias
+                keyPassword = kPassword
             }
         }
     }

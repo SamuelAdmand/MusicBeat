@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BitChord</string>
+    <string name="app_name">MusicBeat</string>
     <string name="playback_channel_name">正在播放</string>
     <string name="download_channel_name">下载</string>
     <string name="download_channel_description">正在保存到你的音乐文件夹的歌曲</string>
@@ -91,10 +91,10 @@
     <string name="dolby_atmos_open_failed">无法打开杜比全景声设置</string>
     <string name="update_available">有可用更新：v%1$s</string>
     <string name="software_update">软件更新</string>
-    <string name="update_available_body">bitchord %1$s 现已可供下载。</string>
-    <string name="update_downloading_body">正在下载 bitchord %1$s…</string>
-    <string name="update_ready_body">bitchord %1$s 已准备好安装。</string>
-    <string name="update_failed_body">无法下载 bitchord %1$s。</string>
+    <string name="update_available_body">musicbeat %1$s 现已可供下载。</string>
+    <string name="update_downloading_body">正在下载 musicbeat %1$s…</string>
+    <string name="update_ready_body">musicbeat %1$s 已准备好安装。</string>
+    <string name="update_failed_body">无法下载 musicbeat %1$s。</string>
     <string name="download_now">立即下载</string>
     <string name="install_now">立即安装</string>
     <string name="later">以后再说</string>
@@ -122,7 +122,7 @@
     <string name="widget_previous">上一首</string>
     <string name="widget_artwork">专辑封面</string>
     <string name="widget_nothing_played">尚未播放任何内容</string>
-    <string name="widget_open_bitchord">打开 BitChord</string>
+    <string name="widget_open_bitchord">打开 MusicBeat</string>
     <string name="widget_preview_title">歌曲标题</string>
     <string name="widget_preview_artist">艺人</string>
     <string name="download_quality">下载质量</string>
@@ -145,7 +145,7 @@
     <string name="cancel_all">取消全部</string>
     <string name="language">语言</string>
     <string name="app_language">应用语言</string>
-    <string name="app_language_description">选择 BitChord 使用的语言。</string>
+    <string name="app_language_description">选择 MusicBeat 使用的语言。</string>
     <string name="english">英语</string>
     <string name="spanish">西班牙语</string>
     <string name="french">法语</string>
@@ -226,10 +226,10 @@
     <string name="beta">测试版</string>
     <string name="refresh_rate">刷新率</string>
     <string name="high_performance_before_enabling">启用前</string>
-    <string name="high_performance_battery_warning">请先将 BitChord 的电量使用设置为“不受限制”。更高的刷新率会消耗更多电量、CPU 和 GPU 资源，并可能使设备发热。</string>
+    <string name="high_performance_battery_warning">请先将 MusicBeat 的电量使用设置为“不受限制”。更高的刷新率会消耗更多电量、CPU 和 GPU 资源，并可能使设备发热。</string>
     <string name="open_battery_settings">打开电量设置</string>
     <string name="enable_high_performance_title">要启用高性能模式吗？</string>
-    <string name="enable_high_performance_confirmation">仅当 BitChord 的电量使用设置为“不受限制”时才启用。设备发热或电量不足时，Android 仍可能限制刷新率。</string>
+    <string name="enable_high_performance_confirmation">仅当 MusicBeat 的电量使用设置为“不受限制”时才启用。设备发热或电量不足时，Android 仍可能限制刷新率。</string>
     <string name="enable">启用</string>
     <string name="not_yet">暂不</string>
     <string name="activity">活动</string>
@@ -264,7 +264,7 @@
     <string name="discord_button_variables">{song_name}、{artist_name} 和 {album_name} 会被替换为当前曲目的信息。</string>
     <string name="discord_buttons_footer">{song_name}、{artist_name} 和 {album_name} 会被替换为该曲目的信息。第一个按钮会在 YouTube Music 中打开这首歌，第二个按钮会打开本项目。</string>
     <string name="discord_presence_footer">当曲目、播放进度或播放状态发生变化时，卡片会随之更新；播放停止时会清除。</string>
-    <string name="discord_sign_in_footer">登录会打开 Discord 的登录页面，你不会在 BitChord 中输入任何内容。</string>
+    <string name="discord_sign_in_footer">登录会打开 Discord 的登录页面，你不会在 MusicBeat 中输入任何内容。</string>
     <string name="discord_token">Discord 令牌</string>
     <string name="discord_token_description">粘贴你的 Discord 账号令牌。它会在此设备上加密保存，且只会发送给 Discord。</string>
     <string name="discord_token_rejected">Discord 拒绝了该令牌。</string>
@@ -317,7 +317,7 @@
     <string name="downloads_finished">下载 · 已完成</string>
     <string name="downloading_progress">正在下载 · %1$d%%</string>
     <string name="starting">正在开始</string>
-    <string name="saved_to_bitchord_folder">已保存到 Music/BitChord</string>
+    <string name="saved_to_bitchord_folder">已保存到 Music/MusicBeat</string>
     <string name="nothing_downloading">当前没有下载任务</string>
     <string name="nothing_to_explore">目前没有可探索的内容</string>
     <string name="no_youtube_music_results">YouTube Music 没有搜索结果</string>
@@ -435,7 +435,7 @@
     <string name="signing_in">正在登录…</string>
     <string name="sleep_timer">睡眠定时器</string>
     <string name="sources_no_lossless">已启用的来源均无法提供无损音频。添加自定义模块即可播放可用的无损文件，而无需转码。</string>
-    <string name="sources_order_footer">如果某个来源没有该曲目或无法访问，BitChord 会尝试下一个来源。排在 YouTube 之前的来源如果返回更好的版本，可以替换其录音。</string>
+    <string name="sources_order_footer">如果某个来源没有该曲目或无法访问，MusicBeat 会尝试下一个来源。排在 YouTube 之前的来源如果返回更好的版本，可以替换其录音。</string>
     <string name="sources_order_header">来源，按此顺序尝试</string>
     <string name="sources_quality_capped">此连接的设置低于高品质，因此串流会被转码以符合该限制，下载不受影响。</string>
     <string name="sources_subtitle">音频的来源及使用顺序</string>
@@ -469,7 +469,7 @@
     <string name="biggest_day_note">你收听最多的一天是 %1$s，共收听了 %2$s。</string>
     <string name="close_replay">关闭 Replay</string>
     <string name="couldnt_draw_picture">无法生成图片</string>
-    <string name="default_replay_holder">BitChord 听众</string>
+    <string name="default_replay_holder">MusicBeat 听众</string>
     <string name="different_albums">不同专辑</string>
     <string name="genres_pending">随着收听记录增多，流派信息会逐渐显示</string>
     <string name="hour_am">上午%1$d点</string>
@@ -495,7 +495,7 @@
     <string name="replay_artist_end">让你一听再听。</string>
     <string name="replay_artist_focus">同一位艺人</string>
     <string name="replay_artist_start">整月里，</string>
-    <string name="replay_empty_description">再多听一会儿，BitChord 就会把你的收听记录变成一份 Replay。</string>
+    <string name="replay_empty_description">再多听一会儿，MusicBeat 就会把你的收听记录变成一份 Replay。</string>
     <string name="replay_genre_end">塑造了你的听感。</string>
     <string name="replay_genre_focus">你的流派</string>
     <string name="replay_genre_start">总的来说，</string>
@@ -579,7 +579,7 @@
     </plurals>
     <string name="no_local_albums">这里还没有任何属于专辑或播放列表的内容。下载完整的专辑或播放列表后，它们会显示在这里。</string>
     <string name="play_your_replay">播放你的 Replay</string>
-    <string name="counted_on_device_with_bitchord">由 BitChord 在此设备上统计</string>
+    <string name="counted_on_device_with_bitchord">由 MusicBeat 在此设备上统计</string>
     <string name="this_month">本月</string>
     <string name="this_year">今年</string>
     <string name="all_time">全部时间</string>

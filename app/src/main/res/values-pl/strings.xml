@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">BitChord</string>
+    <string name="app_name">MusicBeat</string>
     <string name="playback_channel_name">Teraz gra</string>
     <string name="download_channel_name">Pobrane</string>
     <string name="download_channel_description">Utwory są zapisywane do folderu Muzyka</string>
@@ -96,10 +96,10 @@
     <string name="dolby_atmos_open_failed">Nie można było otworzyć ustawień Dolby Atmos</string>
     <string name="update_available">Dostępna aktualizacja: v%1$s</string>
     <string name="software_update">Aktualizacja oprogramowania</string>
-    <string name="update_available_body">bitchord %1$s jest dostępny do pobrania.</string>
-    <string name="update_downloading_body">Pobieranie bitchord %1$s…</string>
-    <string name="update_ready_body">bitchord %1$s jest gotowy do zainstalowania.</string>
-    <string name="update_failed_body">Nie udało się pobrać bitchord %1$s.</string>
+    <string name="update_available_body">musicbeat %1$s jest dostępny do pobrania.</string>
+    <string name="update_downloading_body">Pobieranie musicbeat %1$s…</string>
+    <string name="update_ready_body">musicbeat %1$s jest gotowy do zainstalowania.</string>
+    <string name="update_failed_body">Nie udało się pobrać musicbeat %1$s.</string>
     <string name="download_now">Pobierz teraz</string>
     <string name="install_now">Zainstaluj teraz</string>
     <string name="later">Później</string>
@@ -127,7 +127,7 @@
     <string name="widget_previous">Poprzedni</string>
     <string name="widget_artwork">Okładka albumu</string>
     <string name="widget_nothing_played">Nic nie zostało odtworzone</string>
-    <string name="widget_open_bitchord">Open BitChord</string>
+    <string name="widget_open_bitchord">Open MusicBeat</string>
     <string name="widget_preview_title">Tytuł utworu</string>
     <string name="widget_preview_artist">Artysta</string>
     <string name="download_quality">Jakość pobierania</string>
@@ -150,7 +150,7 @@
     <string name="cancel_all">Anuluj wszystkie</string>
     <string name="language">Język</string>
     <string name="app_language">Język aplikacji</string>
-    <string name="app_language_description">Wybierz język używany przez BitChord.</string>
+    <string name="app_language_description">Wybierz język używany przez MusicBeat.</string>
     <string name="english">Angielski</string>
     <string name="spanish">Hiszpański</string>
     <string name="french">Francuski</string>
@@ -226,10 +226,10 @@
     <string name="beta">Beta</string>
     <string name="refresh_rate">Częstotliwość odświeżania</string>
     <string name="high_performance_before_enabling">Przed włączeniem</string>
-    <string name="high_performance_battery_warning">Najpierw ustaw użycie baterii przez BitChord na Bez ograniczeń. Wyższe częstotliwości odświeżania zużywają więcej baterii, procesora i układu graficznego oraz mogą nagrzewać urządzenie.</string>
+    <string name="high_performance_battery_warning">Najpierw ustaw użycie baterii przez MusicBeat na Bez ograniczeń. Wyższe częstotliwości odświeżania zużywają więcej baterii, procesora i układu graficznego oraz mogą nagrzewać urządzenie.</string>
     <string name="open_battery_settings">Otwórz ustawienia baterii</string>
     <string name="enable_high_performance_title">Włączyć tryb wysokiej wydajności?</string>
-    <string name="enable_high_performance_confirmation">Włącz tylko wtedy, gdy użycie baterii przez BitChord jest ustawione na Bez ograniczeń. Android nadal może ograniczyć częstotliwość odświeżania, gdy urządzenie jest gorące lub ma mało energii.</string>
+    <string name="enable_high_performance_confirmation">Włącz tylko wtedy, gdy użycie baterii przez MusicBeat jest ustawione na Bez ograniczeń. Android nadal może ograniczyć częstotliwość odświeżania, gdy urządzenie jest gorące lub ma mało energii.</string>
     <string name="enable">Włącz</string>
     <string name="not_yet">Jeszcze nie</string>
     <string name="activity">Aktywność</string>
@@ -264,7 +264,7 @@
     <string name="discord_button_variables">{song_name}, {artist_name} i {album_name} są zastępowane obecnym utworem.</string>
     <string name="discord_buttons_footer">{song_name}, {artist_name} i {album_name} są zastępowane utworem. Pierwszy przycisk otwiera utwór w YouTube Music, a drugi otwiera ten projekt.</string>
     <string name="discord_presence_footer">Karta aktualizuje się, gdy zmieni się utwór, pozycja lub stan odtwarzania. Znika, gdy odtwarzanie się zatrzyma.</string>
-    <string name="discord_sign_in_footer">Logowanie otwiera stronę logowania Discord. Nic nie jest wpisywane do BitChord.</string>
+    <string name="discord_sign_in_footer">Logowanie otwiera stronę logowania Discord. Nic nie jest wpisywane do MusicBeat.</string>
     <string name="discord_token">Token Discord</string>
     <string name="discord_token_description">Wklej token swojego konta Discord. Pozostaje on zaszyfrowany na tym urządzeniu i jest wysyłany tylko do Discorda.</string>
     <string name="discord_token_rejected">Discord odrzucił ten token.</string>
@@ -317,7 +317,7 @@
     <string name="downloads_finished">Pobieranie · zakończone</string>
     <string name="downloading_progress">Pobieranie · %1$d%%</string>
     <string name="starting">Rozpoczynanie</string>
-    <string name="saved_to_bitchord_folder">Zapisano w Music/BitChord</string>
+    <string name="saved_to_bitchord_folder">Zapisano w Music/MusicBeat</string>
     <string name="nothing_downloading">Nic się nie pobiera</string>
     <string name="nothing_to_explore">Nie ma teraz nic do odkrycia</string>
     <string name="no_youtube_music_results">Brak wyników z YouTube Music</string>
@@ -408,7 +408,7 @@
     <string name="signing_in">Logowanie…</string>
     <string name="sleep_timer">Wyłącznik czasowy</string>
     <string name="sources_no_lossless">Żadne włączone źródło nie może dostarczyć bezstratnego dźwięku. Dodaj moduł niestandardowy, aby odtwarzać dostępne pliki bezstratne bez transkodowania.</string>
-    <string name="sources_order_footer">Jeśli źródło nie ma utworu lub jest niedostępne, BitChord próbuje następne. Źródła przed YouTube mogą je zastąpić, gdy znajdą lepszą wersję.</string>
+    <string name="sources_order_footer">Jeśli źródło nie ma utworu lub jest niedostępne, MusicBeat próbuje następne. Źródła przed YouTube mogą je zastąpić, gdy znajdą lepszą wersję.</string>
     <string name="sources_order_header">Źródła, sprawdzane w tej kolejności</string>
     <string name="sources_quality_capped">To połączenie jest ustawione poniżej Wysokiej jakości, więc strumienie są transkodowane. Pobierania pozostają nienaruszone.</string>
     <string name="sources_subtitle">Skąd pochodzi dźwięk i używana kolejność</string>
@@ -442,7 +442,7 @@
     <string name="biggest_day_note">Twój najlepszy dzień to %1$s z %2$s muzyki.</string>
     <string name="close_replay">Zamknij Replay</string>
     <string name="couldnt_draw_picture">Nie można utworzyć obrazka</string>
-    <string name="default_replay_holder">Słuchacz BitChord</string>
+    <string name="default_replay_holder">Słuchacz MusicBeat</string>
     <string name="different_albums">Różne albumy</string>
     <string name="genres_pending">Gatunki pojawią się w miarę wzrostu historii słuchania</string>
     <string name="hour_am">%1$d AM</string>
@@ -468,7 +468,7 @@
     <string name="replay_artist_end"> ciągle powracał.</string>
     <string name="replay_artist_focus">Jeden artysta</string>
     <string name="replay_artist_start">Przez cały miesiąc, </string>
-    <string name="replay_empty_description">Posłuchaj trochę więcej, a BitChord przekształci twoją historię w Replay.</string>
+    <string name="replay_empty_description">Posłuchaj trochę więcej, a MusicBeat przekształci twoją historię w Replay.</string>
     <string name="replay_genre_end"> ukształtowały twoje brzmienie.</string>
     <string name="replay_genre_focus">Twoje gatunki</string>
     <string name="replay_genre_start">Razem, </string>
@@ -540,7 +540,7 @@
     <string name="no_listening_history">brak historii odtwarzania</string>
     <string name="no_local_albums">Nic stąd jeszcze nie należy do albumu ani playlisty. Pobierz cały album lub playlistę, a pojawi się tutaj.</string>
     <string name="play_your_replay">Odtwórz swój Replay</string>
-    <string name="counted_on_device_with_bitchord">Obliczono na tym urządzeniu z BitChord</string>
+    <string name="counted_on_device_with_bitchord">Obliczono na tym urządzeniu z MusicBeat</string>
     <string name="this_month">Ten miesiąc</string>
     <string name="this_year">Ten rok</string>
     <string name="all_time">Cały czas</string>

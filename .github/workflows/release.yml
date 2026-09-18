@@ -1,0 +1,123 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for the release (e.g. v1.5.2)'
+        required: true
+        default: 'v1.5.2'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup local.properties
+        run: |
+          echo "LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}" > local.properties
+          echo "LASTFM_SECRET=${{ secrets.LASTFM_SECRET }}" >> local.properties
+
+      - name: Setup Release Keystore
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > musicbeat-release.jks
+            echo "storeFile=musicbeat-release.jks" > keystore.properties
+            echo "storePassword=${{ secrets.STORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}" >> keystore.properties
+            echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> keystore.properties
+            echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> keystore.properties
+          fi
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build All Release Variants
+        run: ./gradlew assembleStandardRelease assembleQqmusicRelease assembleKugouRelease
+
+      - name: Prepare and Organize Release APKs
+        id: prepare_apks
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag_name }}"
+          fi
+          echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
+
+          mkdir -p release-apks
+
+          # Standard flavor (com.samuel.musicbeat)
+          for f in app/build/outputs/apk/standard/release/app-standard-*.apk; do
+            [ -f "$f" ] || continue
+            base=$(basename "$f" | sed -E 's/app-standard-(.*)-release(-unsigned)?\.apk/\1/')
+            cp "$f" "release-apks/MusicBeat-${TAG}-standard-${base}.apk"
+          done
+
+          # OnePlus / OPPO Whitelisted: QQ Music flavor (com.tencent.qqmusic)
+          for f in app/build/outputs/apk/qqmusic/release/app-qqmusic-*.apk; do
+            [ -f "$f" ] || continue
+            base=$(basename "$f" | sed -E 's/app-qqmusic-(.*)-release(-unsigned)?\.apk/\1/')
+            cp "$f" "release-apks/MusicBeat-${TAG}-oneplus-qqmusic-${base}.apk"
+          done
+
+          # OnePlus / OPPO Whitelisted: Kugou flavor (com.kugou.android)
+          for f in app/build/outputs/apk/kugou/release/app-kugou-*.apk; do
+            [ -f "$f" ] || continue
+            base=$(basename "$f" | sed -E 's/app-kugou-(.*)-release(-unsigned)?\.apk/\1/')
+            cp "$f" "release-apks/MusicBeat-${TAG}-oneplus-kugou-${base}.apk"
+          done
+
+          ls -lh release-apks/
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          cat << 'EOF' > release_notes.md
+          ## 🎵 MusicBeat Release
+
+          MusicBeat is a modern, privacy-respecting local & streaming music player with lossless audio, word-synced lyrics, and native hardware equalizer integration.
+
+          Forked with credit and gratitude from [kushagrasinghx/BitChord](https://github.com/kushagrasinghx/BitChord).
+
+          ---
+
+          ### 📦 Variant Selection Guide
+
+          | Variant | Package Name (`applicationId`) | Recommended For |
+          | :--- | :--- | :--- |
+          | **Standard** | `com.samuel.musicbeat` | **All general Android devices** (Pixel, Samsung, Motorola, Xiaomi, etc.) |
+          | **OnePlus (QQ Music)** | `com.tencent.qqmusic` | **OnePlus, OPPO, Realme** devices to unlock native **Dolby Atmos, Dirac, & OReality** audio effects |
+          | **OnePlus (KuGou)** | `com.kugou.android` | Alternative OnePlus/OPPO whitelist package for hardware audio enhancement |
+
+          > [!TIP]
+          > For 99% of modern phones, download the **`arm64-v8a`** APK for best performance and smaller file size. If unsure, download the **`universal`** APK.
+          EOF
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: MusicBeat ${{ env.RELEASE_TAG }}
+          body_path: release_notes.md
+          files: release-apks/*.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

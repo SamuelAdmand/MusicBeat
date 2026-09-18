@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BitChord</string>
+    <string name="app_name">MusicBeat</string>
     <string name="playback_channel_name">Сейчас играет</string>
     <string name="download_channel_name">Загрузки</string>
     <string name="download_channel_description">Песни сохраняются в папку «Музыка»</string>
@@ -103,10 +103,10 @@
     <string name="dolby_atmos_open_failed">Не удалось открыть настройки Dolby Atmos</string>
     <string name="update_available">Доступно обновление: v%1$s</string>
     <string name="software_update">Обновление ПО</string>
-    <string name="update_available_body">bitchord %1$s доступен для загрузки.</string>
-    <string name="update_downloading_body">Загрузка bitchord %1$s…</string>
-    <string name="update_ready_body">bitchord %1$s готов к установке.</string>
-    <string name="update_failed_body">Не удалось загрузить bitchord %1$s.</string>
+    <string name="update_available_body">musicbeat %1$s доступен для загрузки.</string>
+    <string name="update_downloading_body">Загрузка musicbeat %1$s…</string>
+    <string name="update_ready_body">musicbeat %1$s готов к установке.</string>
+    <string name="update_failed_body">Не удалось загрузить musicbeat %1$s.</string>
     <string name="download_now">Загрузить сейчас</string>
     <string name="install_now">Установить сейчас</string>
     <string name="later">Позже</string>
@@ -134,7 +134,7 @@
     <string name="widget_previous">Назад</string>
     <string name="widget_artwork">Обложка альбома</string>
     <string name="widget_nothing_played">Пока ничего не воспроизводилось</string>
-    <string name="widget_open_bitchord">Открыть BitChord</string>
+    <string name="widget_open_bitchord">Открыть MusicBeat</string>
     <string name="widget_preview_title">Название песни</string>
     <string name="widget_preview_artist">Исполнитель</string>
     <string name="download_quality">Качество загрузки</string>
@@ -157,7 +157,7 @@
     <string name="cancel_all">Отменить всё</string>
     <string name="language">Язык</string>
     <string name="app_language">Язык приложения</string>
-    <string name="app_language_description">Выберите язык, используемый в BitChord.</string>
+    <string name="app_language_description">Выберите язык, используемый в MusicBeat.</string>
     <string name="english">Английский</string>
     <string name="spanish">Испанский</string>
     <string name="french">Французский</string>
@@ -238,10 +238,10 @@
     <string name="beta">Бета</string>
     <string name="refresh_rate">Частота обновления</string>
     <string name="high_performance_before_enabling">Перед включением</string>
-    <string name="high_performance_battery_warning">Сначала установите для использования батареи BitChord значение «Без ограничений». Более высокая частота обновления расходует больше заряда батареи, ресурсов процессора и графического процессора и может нагревать устройство.</string>
+    <string name="high_performance_battery_warning">Сначала установите для использования батареи MusicBeat значение «Без ограничений». Более высокая частота обновления расходует больше заряда батареи, ресурсов процессора и графического процессора и может нагревать устройство.</string>
     <string name="open_battery_settings">Открыть настройки батареи</string>
     <string name="enable_high_performance_title">Включить режим высокой производительности?</string>
-    <string name="enable_high_performance_confirmation">Включайте только если для использования батареи BitChord установлено значение «Без ограничений». Android всё равно может ограничивать частоту обновления, если устройство нагревается или заряд низкий.</string>
+    <string name="enable_high_performance_confirmation">Включайте только если для использования батареи MusicBeat установлено значение «Без ограничений». Android всё равно может ограничивать частоту обновления, если устройство нагревается или заряд низкий.</string>
     <string name="enable">Включить</string>
     <string name="not_yet">Не сейчас</string>
     <string name="activity">Активность</string>
@@ -276,7 +276,7 @@
     <string name="discord_button_variables">{song_name}, {artist_name} и {album_name} заменяются данными текущего трека.</string>
     <string name="discord_buttons_footer">{song_name}, {artist_name} и {album_name} заменяются данными трека. Первая кнопка открывает песню в YouTube Music, а вторая — этот проект.</string>
     <string name="discord_presence_footer">Карточка обновляется при изменении трека, позиции воспроизведения или его состояния. Она исчезает, когда воспроизведение останавливается.</string>
-    <string name="discord_sign_in_footer">Вход открывает страницу входа Discord. В BitChord ничего не вводится.</string>
+    <string name="discord_sign_in_footer">Вход открывает страницу входа Discord. В MusicBeat ничего не вводится.</string>
     <string name="discord_token">Токен Discord</string>
     <string name="discord_token_description">Вставьте токен своего аккаунта Discord. Он хранится в зашифрованном виде на этом устройстве и отправляется только в Discord.</string>
     <string name="discord_token_rejected">Discord отклонил этот токен.</string>
@@ -329,7 +329,7 @@
     <string name="downloads_finished">Загрузки · завершено</string>
     <string name="downloading_progress">Загрузка · %1$d%%</string>
     <string name="starting">Начало</string>
-    <string name="saved_to_bitchord_folder">Сохранено в Музыка/BitChord</string>
+    <string name="saved_to_bitchord_folder">Сохранено в Музыка/MusicBeat</string>
     <string name="nothing_downloading">Ничего не загружается</string>
     <string name="nothing_to_explore">Сейчас нечего смотреть в обзоре</string>
     <string name="no_youtube_music_results">Нет результатов из YouTube Music</string>
@@ -465,7 +465,7 @@
     <string name="signing_in">Выполняется вход…</string>
     <string name="sleep_timer">Таймер сна</string>
     <string name="sources_no_lossless">Ни один включённый источник не может предоставить аудио без потерь. Добавьте пользовательский модуль, чтобы воспроизводить доступные файлы без потерь без перекодирования.</string>
-    <string name="sources_order_footer">Если у источника нет трека или он недоступен, BitChord пробует следующий. Источники выше YouTube могут заменить его запись, если предоставляют более качественную версию.</string>
+    <string name="sources_order_footer">Если у источника нет трека или он недоступен, MusicBeat пробует следующий. Источники выше YouTube могут заменить его запись, если предоставляют более качественную версию.</string>
     <string name="sources_order_header">Источники, пробуются в этом порядке</string>
     <string name="sources_quality_capped">Это соединение установлено ниже высокого качества, поэтому потоки перекодируются под это ограничение. На загрузки это не влияет.</string>
     <string name="sources_subtitle">Откуда поступает аудио и в каком порядке</string>
@@ -501,7 +501,7 @@
     <string name="biggest_day_note">Ваш самый насыщенный день был %1$s — %2$s прослушивания.</string>
     <string name="close_replay">Закрыть Replay</string>
     <string name="couldnt_draw_picture">Не удалось создать изображение</string>
-    <string name="default_replay_holder">Слушатель BitChord</string>
+    <string name="default_replay_holder">Слушатель MusicBeat</string>
     <string name="different_albums">Разные альбомы</string>
     <string name="genres_pending">Жанры появятся по мере роста вашей истории прослушивания</string>
     <string name="hour_am">%1$d утра</string>
@@ -527,7 +527,7 @@
     <string name="replay_artist_end"> не отпускал вас.</string>
     <string name="replay_artist_focus">Один исполнитель</string>
     <string name="replay_artist_start">Весь месяц </string>
-    <string name="replay_empty_description">Слушайте немного больше, и BitChord превратит вашу историю в Replay.</string>
+    <string name="replay_empty_description">Слушайте немного больше, и MusicBeat превратит вашу историю в Replay.</string>
     <string name="replay_genre_end"> определили ваше звучание.</string>
     <string name="replay_genre_focus">Ваши жанры</string>
     <string name="replay_genre_start">Вместе </string>
@@ -619,7 +619,7 @@
     </plurals>
     <string name="no_local_albums">Здесь пока ничего нет из альбома или плейлиста. Загрузите полный альбом или плейлист, и он появится здесь.</string>
     <string name="play_your_replay">Воспроизвести ваш Replay</string>
-    <string name="counted_on_device_with_bitchord">Подсчитано на этом устройстве с помощью BitChord</string>
+    <string name="counted_on_device_with_bitchord">Подсчитано на этом устройстве с помощью MusicBeat</string>
     <string name="this_month">Этот месяц</string>
     <string name="this_year">Этот год</string>
     <string name="all_time">За всё время</string>

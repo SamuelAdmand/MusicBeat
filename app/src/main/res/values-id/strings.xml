@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BitChord</string>
+    <string name="app_name">MusicBeat</string>
     <string name="playback_channel_name">Sedang diputar</string>
     <string name="download_channel_name">Unduhan</string>
     <string name="download_channel_description">Lagu yang sedang disimpan ke folder Musik Anda</string>
@@ -91,10 +91,10 @@
     <string name="dolby_atmos_open_failed">Tidak dapat membuka pengaturan Dolby Atmos</string>
     <string name="update_available">Pembaruan tersedia: v%1$s</string>
     <string name="software_update">Pembaruan Perangkat Lunak</string>
-    <string name="update_available_body">bitchord %1$s tersedia untuk diunduh.</string>
-    <string name="update_downloading_body">Mengunduh bitchord %1$s…</string>
-    <string name="update_ready_body">bitchord %1$s siap dipasang.</string>
-    <string name="update_failed_body">Gagal mengunduh bitchord %1$s.</string>
+    <string name="update_available_body">musicbeat %1$s tersedia untuk diunduh.</string>
+    <string name="update_downloading_body">Mengunduh musicbeat %1$s…</string>
+    <string name="update_ready_body">musicbeat %1$s siap dipasang.</string>
+    <string name="update_failed_body">Gagal mengunduh musicbeat %1$s.</string>
     <string name="download_now">Unduh Sekarang</string>
     <string name="install_now">Pasang Sekarang</string>
     <string name="later">Nanti</string>
@@ -122,7 +122,7 @@
     <string name="widget_previous">Sebelumnya</string>
     <string name="widget_artwork">Sampul album</string>
     <string name="widget_nothing_played">Belum ada yang diputar</string>
-    <string name="widget_open_bitchord">Buka BitChord</string>
+    <string name="widget_open_bitchord">Buka MusicBeat</string>
     <string name="widget_preview_title">Judul lagu</string>
     <string name="widget_preview_artist">Artis</string>
     <string name="download_quality">Kualitas unduhan</string>
@@ -145,7 +145,7 @@
     <string name="cancel_all">Batalkan semua</string>
     <string name="language">Bahasa</string>
     <string name="app_language">Bahasa aplikasi</string>
-    <string name="app_language_description">Pilih bahasa yang digunakan BitChord.</string>
+    <string name="app_language_description">Pilih bahasa yang digunakan MusicBeat.</string>
     <string name="english">Inggris</string>
     <string name="spanish">Spanyol</string>
     <string name="french">Prancis</string>
@@ -226,10 +226,10 @@
     <string name="beta">Beta</string>
     <string name="refresh_rate">Refresh rate</string>
     <string name="high_performance_before_enabling">Sebelum mengaktifkan</string>
-    <string name="high_performance_battery_warning">Atur dulu penggunaan baterai BitChord ke Tidak Dibatasi. Refresh rate yang lebih tinggi menggunakan lebih banyak baterai, CPU, dan GPU, serta dapat membuat perangkat Anda menjadi hangat.</string>
+    <string name="high_performance_battery_warning">Atur dulu penggunaan baterai MusicBeat ke Tidak Dibatasi. Refresh rate yang lebih tinggi menggunakan lebih banyak baterai, CPU, dan GPU, serta dapat membuat perangkat Anda menjadi hangat.</string>
     <string name="open_battery_settings">Buka pengaturan baterai</string>
     <string name="enable_high_performance_title">Aktifkan mode performa tinggi?</string>
-    <string name="enable_high_performance_confirmation">Aktifkan hanya jika penggunaan baterai BitChord diatur ke Tidak Dibatasi. Android tetap dapat membatasi refresh rate saat perangkat panas atau baterai lemah.</string>
+    <string name="enable_high_performance_confirmation">Aktifkan hanya jika penggunaan baterai MusicBeat diatur ke Tidak Dibatasi. Android tetap dapat membatasi refresh rate saat perangkat panas atau baterai lemah.</string>
     <string name="enable">Aktifkan</string>
     <string name="not_yet">Belum</string>
     <string name="activity">Aktivitas</string>
@@ -264,7 +264,7 @@
     <string name="discord_button_variables">{song_name}, {artist_name}, dan {album_name} akan digantikan dengan trek yang sedang diputar.</string>
     <string name="discord_buttons_footer">{song_name}, {artist_name}, dan {album_name} akan digantikan dengan trek tersebut. Tombol pertama membuka lagu di YouTube Music dan tombol kedua membuka proyek ini.</string>
     <string name="discord_presence_footer">Kartu diperbarui saat trek, posisi, atau status pemutaran berubah. Kartu akan hilang saat pemutaran berhenti.</string>
-    <string name="discord_sign_in_footer">Masuk akan membuka halaman login Discord. Tidak ada yang diketik ke BitChord.</string>
+    <string name="discord_sign_in_footer">Masuk akan membuka halaman login Discord. Tidak ada yang diketik ke MusicBeat.</string>
     <string name="discord_token">Token Discord</string>
     <string name="discord_token_description">Tempel token akun Discord Anda. Token ini tetap terenkripsi di perangkat ini dan hanya dikirim ke Discord.</string>
     <string name="discord_token_rejected">Discord menolak token tersebut.</string>
@@ -317,7 +317,7 @@
     <string name="downloads_finished">Unduhan · selesai</string>
     <string name="downloading_progress">Mengunduh · %1$d%%</string>
     <string name="starting">Memulai</string>
-    <string name="saved_to_bitchord_folder">Disimpan ke Music/BitChord</string>
+    <string name="saved_to_bitchord_folder">Disimpan ke Music/MusicBeat</string>
     <string name="nothing_downloading">Tidak ada yang sedang diunduh</string>
     <string name="nothing_to_explore">Belum ada yang bisa dijelajahi saat ini</string>
     <string name="no_youtube_music_results">Tidak ada hasil dari YouTube Music</string>
@@ -435,7 +435,7 @@
     <string name="signing_in">Sedang masuk…</string>
     <string name="sleep_timer">Timer tidur</string>
     <string name="sources_no_lossless">Tidak ada sumber aktif yang dapat menyediakan audio lossless. Tambahkan modul kustom untuk memutar file lossless yang tersedia tanpa transcoding.</string>
-    <string name="sources_order_footer">Jika suatu sumber tidak memiliki trek atau tidak dapat dijangkau, BitChord mencoba sumber berikutnya. Sumber di atas YouTube dapat menggantikan rekamannya saat menghasilkan versi yang lebih baik.</string>
+    <string name="sources_order_footer">Jika suatu sumber tidak memiliki trek atau tidak dapat dijangkau, MusicBeat mencoba sumber berikutnya. Sumber di atas YouTube dapat menggantikan rekamannya saat menghasilkan versi yang lebih baik.</string>
     <string name="sources_order_header">Sumber, dicoba dalam urutan ini</string>
     <string name="sources_quality_capped">Koneksi ini diatur di bawah Kualitas tinggi, sehingga stream ditranskode agar sesuai dengan batas tersebut. Unduhan tidak terpengaruh.</string>
     <string name="sources_subtitle">Dari mana audio berasal dan urutan yang digunakan</string>
@@ -469,7 +469,7 @@
     <string name="biggest_day_note">Hari terbesar Anda adalah %1$s dengan %2$s waktu mendengarkan.</string>
     <string name="close_replay">Tutup Replay</string>
     <string name="couldnt_draw_picture">Tidak dapat membuat gambar</string>
-    <string name="default_replay_holder">Pendengar BitChord</string>
+    <string name="default_replay_holder">Pendengar MusicBeat</string>
     <string name="different_albums">Album yang berbeda</string>
     <string name="genres_pending">Genre akan muncul seiring bertambahnya riwayat mendengarkan Anda</string>
     <string name="hour_am">%1$d AM</string>
@@ -495,7 +495,7 @@
     <string name="replay_artist_end"> terus Anda dengarkan.</string>
     <string name="replay_artist_focus">Satu artis</string>
     <string name="replay_artist_start">Sepanjang bulan ini, </string>
-    <string name="replay_empty_description">Dengarkan sedikit lebih banyak dan BitChord akan mengubah riwayat Anda menjadi Replay.</string>
+    <string name="replay_empty_description">Dengarkan sedikit lebih banyak dan MusicBeat akan mengubah riwayat Anda menjadi Replay.</string>
     <string name="replay_genre_end"> membentuk selera musik Anda.</string>
     <string name="replay_genre_focus">Genre Anda</string>
     <string name="replay_genre_start">Bersama-sama, </string>
@@ -579,7 +579,7 @@
     </plurals>
     <string name="no_local_albums">Belum ada yang termasuk album atau playlist di sini. Unduh album atau playlist lengkap dan akan muncul di sini.</string>
     <string name="play_your_replay">Putar Replay Anda</string>
-    <string name="counted_on_device_with_bitchord">Dihitung di perangkat ini dengan BitChord</string>
+    <string name="counted_on_device_with_bitchord">Dihitung di perangkat ini dengan MusicBeat</string>
     <string name="this_month">Bulan ini</string>
     <string name="this_year">Tahun ini</string>
     <string name="all_time">Sepanjang waktu</string>
