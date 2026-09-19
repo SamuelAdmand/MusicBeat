@@ -12,12 +12,15 @@ package com.music.bitchord.ui.components
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -42,14 +45,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,6 +75,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlinx.coroutines.launch
 
 /**
  * The liquid glass navigation bar: the iOS 26 shape where the now playing
@@ -101,6 +109,7 @@ fun GlassNavBar(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onExpand: () -> Unit,
+    onDismiss: () -> Unit = {},
     modifier: Modifier = Modifier,
     useGlass: Boolean = false,
     hazeState: HazeState? = null,
@@ -109,6 +118,7 @@ fun GlassNavBar(
     val isDark = isSystemInDarkTheme()
     val borderColor = if (isDark) GLASS_EDGE_COLOR else Color.Black.copy(alpha = 0.08f)
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val hideNavigationBarLabels by AppSettings.hideNavigationBarLabels.collectAsStateWithLifecycle()
 
     val contentColor = if (useGlass) glassContentColor() else MaterialTheme.colorScheme.onSurface
     val selectedColor = if (useGlass) contentColor else MaterialTheme.colorScheme.primary
@@ -118,6 +128,13 @@ fun GlassNavBar(
 
     val currentOnTabSelected by rememberUpdatedState(onTabSelected)
     val standaloneIndex = tabs.lastIndex
+
+    // Ensure tab bar is expanded whenever no song is playing
+    LaunchedEffect(song) {
+        if (song == null) {
+            scrollConnection.expand()
+        }
+    }
 
     val surfaceModifier: @Composable () -> Modifier = if (useGlass) {
         { Modifier.liquidGlass(shape = pillShape) }
@@ -158,6 +175,7 @@ fun GlassNavBar(
                     onPlayPause = onPlayPause,
                     onNext = onNext,
                     onExpand = onExpand,
+                    onDismiss = onDismiss,
                     useGlass = useGlass,
                     modifier = accessoryModifier.then(surfaceModifier()),
                 )
@@ -174,6 +192,7 @@ fun GlassNavBar(
                     onPlayPause = onPlayPause,
                     onNext = onNext,
                     onExpand = onExpand,
+                    onDismiss = onDismiss,
                     useGlass = useGlass,
                     modifier = accessoryModifier.fillMaxWidth().then(surfaceModifier()),
                 )
@@ -205,8 +224,8 @@ fun GlassNavBar(
         ),
         // Held too: this is declared `Any?`, so a fresh list every pass is a
         // changed argument by identity and defeats skipping on its own.
-        contentKey = remember(selectedIndex, tabs, contentColor) {
-            listOf(selectedIndex, tabs, contentColor)
+        contentKey = remember(selectedIndex, tabs, contentColor, hideNavigationBarLabels) {
+            listOf(selectedIndex, tabs, contentColor, hideNavigationBarLabels)
         },
     ) {
         tabs.forEachIndexed { index, tab ->
@@ -241,17 +260,19 @@ fun GlassNavBar(
                         )
                     },
                     title = {
-                        Text(
-                            text = tab.label,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = tint,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            // The library's Tab stacks the glyph and the label
-                            // with nothing between them; the plain bar spaces
-                            // them, and this is where that gap goes.
-                            modifier = Modifier.padding(top = TAB_ICON_LABEL_GAP),
-                        )
+                        if (!hideNavigationBarLabels) {
+                            Text(
+                                text = tab.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = tint,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                // The library's Tab stacks the glyph and the label
+                                // with nothing between them; the plain bar spaces
+                                // them, and this is where that gap goes.
+                                modifier = Modifier.padding(top = TAB_ICON_LABEL_GAP),
+                            )
+                        }
                     },
                     onClick = onClick,
                 )
@@ -283,6 +304,7 @@ private fun GlassNowPlaying(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onExpand: () -> Unit,
+    onDismiss: () -> Unit = {},
     useGlass: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -294,6 +316,11 @@ private fun GlassNowPlaying(
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "accessoryPressScale",
     )
+
+    val density = LocalDensity.current
+    val dismissThresholdPx = with(density) { 48.dp.toPx() }
+    val offsetY = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
 
     val artSize = if (isInline) 32.dp else 40.dp
     val glyphSlot = if (isInline) 32.dp else 40.dp
@@ -312,6 +339,36 @@ private fun GlassNowPlaying(
             .graphicsLayer {
                 scaleX = pressScale
                 scaleY = pressScale
+                translationY = offsetY.value
+                alpha = (1f - (offsetY.value / (dismissThresholdPx * 1.5f))).coerceIn(0f, 1f)
+            }
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragEnd = {
+                        if (offsetY.value >= dismissThresholdPx) {
+                            scope.launch {
+                                offsetY.animateTo(dismissThresholdPx * 2f, tween(120))
+                                onDismiss()
+                            }
+                        } else {
+                            scope.launch {
+                                offsetY.animateTo(0f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        scope.launch {
+                            offsetY.animateTo(0f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))
+                        }
+                    },
+                    onVerticalDrag = { change, dragAmount ->
+                        if (dragAmount > 0 || offsetY.value > 0) {
+                            change.consume()
+                            val next = (offsetY.value + dragAmount).coerceAtLeast(0f)
+                            scope.launch { offsetY.snapTo(next) }
+                        }
+                    },
+                )
             }
             .then(modifier),
     ) {

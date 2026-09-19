@@ -368,6 +368,7 @@ class PlaybackService : MediaLibraryService() {
      * the feature is off or no account is connected. See [DiscordRPC].
      */
     private var discordRpc: DiscordRPC? = null
+    private var audioEffectManager: com.music.bitchord.playback.equalizer.AudioEffectManager? = null
 
     /**
      * The in-flight presence push. Held so the next one can cancel it: the
@@ -1127,6 +1128,16 @@ class PlaybackService : MediaLibraryService() {
         applyOutputRoute()
 
         AppSettings.audioSessionId.value = exoPlayer.audioSessionId
+        val effectManager = com.music.bitchord.playback.equalizer.AudioEffectManager(this).also {
+            audioEffectManager = it
+        }
+        effectManager.setAudioSessionId(
+            sessionId = exoPlayer.audioSessionId,
+            enabled = com.music.bitchord.data.settings.EqualizerSettings.enabled.value,
+            bandLevels = com.music.bitchord.data.settings.EqualizerSettings.bandLevels.value,
+            bassBoostStrength = com.music.bitchord.data.settings.EqualizerSettings.bassBoostStrength.value,
+            virtualizerStrength = com.music.bitchord.data.settings.EqualizerSettings.virtualizerStrength.value,
+        )
         applySettings(exoPlayer)
         applySettings(sparePlayer)
         observeSettings()
@@ -3780,6 +3791,13 @@ class PlaybackService : MediaLibraryService() {
         spare = newSpare
         newSpare.audioSessionId = newActive.audioSessionId
         AppSettings.audioSessionId.value = newActive.audioSessionId
+        audioEffectManager?.setAudioSessionId(
+            sessionId = newActive.audioSessionId,
+            enabled = com.music.bitchord.data.settings.EqualizerSettings.enabled.value,
+            bandLevels = com.music.bitchord.data.settings.EqualizerSettings.bandLevels.value,
+            bassBoostStrength = com.music.bitchord.data.settings.EqualizerSettings.bassBoostStrength.value,
+            virtualizerStrength = com.music.bitchord.data.settings.EqualizerSettings.virtualizerStrength.value,
+        )
         applySettings(newActive)
         applySettings(newSpare)
         newActive.repeatMode = repeatMode
@@ -3865,6 +3883,28 @@ class PlaybackService : MediaLibraryService() {
         }
         scope.launch {
             AppSettings.spatialAudio.collect { applySpatialAudioEnabled() }
+        }
+        scope.launch {
+            com.music.bitchord.data.settings.EqualizerSettings.enabled.collect { enabled ->
+                audioEffectManager?.applyEnabled(enabled)
+            }
+        }
+        scope.launch {
+            com.music.bitchord.data.settings.EqualizerSettings.bandLevels.collect { bands ->
+                bands.forEach { (band, level) ->
+                    audioEffectManager?.applyBandLevel(band, level)
+                }
+            }
+        }
+        scope.launch {
+            com.music.bitchord.data.settings.EqualizerSettings.bassBoostStrength.collect { strength ->
+                audioEffectManager?.applyBassBoost(strength)
+            }
+        }
+        scope.launch {
+            com.music.bitchord.data.settings.EqualizerSettings.virtualizerStrength.collect { strength ->
+                audioEffectManager?.applyVirtualizer(strength)
+            }
         }
     }
 
@@ -4260,6 +4300,8 @@ class PlaybackService : MediaLibraryService() {
         // is not a reason to leave either behind.
         spare?.release()
         spare = null
+        audioEffectManager?.release()
+        audioEffectManager = null
         super.onDestroy()
     }
 

@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MoreHoriz
@@ -83,18 +82,6 @@ fun DrillDownHeader(
             .fillMaxWidth()
             .padding(start = PAGE_GUTTER, end = PAGE_GUTTER, top = 8.dp, bottom = 12.dp),
     ) {
-        if (onBack != null) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.align(Alignment.Start),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = stringResource(R.string.back),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-        }
         val shape = if (isArtist) CircleShape else RoundedCornerShape(16.dp)
         Box(
             modifier = Modifier

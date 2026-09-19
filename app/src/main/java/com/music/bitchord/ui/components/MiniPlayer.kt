@@ -2,9 +2,14 @@ package com.music.bitchord.ui.components
 
 import com.music.bitchord.R
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,11 +30,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +54,7 @@ import com.music.bitchord.ui.haptics.rememberHaptics
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlinx.coroutines.launch
 
 /**
  * The transport buttons' touch target. Material's default 48dp is what a bar
@@ -118,10 +129,16 @@ fun MiniPlayer(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onExpand: () -> Unit,
+    onDismiss: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val haptics = rememberHaptics()
+    val density = LocalDensity.current
+    val dismissThresholdPx = with(density) { 48.dp.toPx() }
+    val offsetY = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+
     // percent rather than a dp figure, so the corner stays exactly half the
     // height if the row's contents ever change it — which is what keeps a pill
     // a pill instead of a rounded rectangle. Same idiom as [FloatingBottomBar]
@@ -130,6 +147,38 @@ fun MiniPlayer(
     Box(
         modifier = modifier
             .padding(horizontal = PAGE_GUTTER)
+            .graphicsLayer {
+                translationY = offsetY.value
+                alpha = (1f - (offsetY.value / (dismissThresholdPx * 1.5f))).coerceIn(0f, 1f)
+            }
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragEnd = {
+                        if (offsetY.value >= dismissThresholdPx) {
+                            scope.launch {
+                                offsetY.animateTo(dismissThresholdPx * 2f, tween(120))
+                                onDismiss()
+                            }
+                        } else {
+                            scope.launch {
+                                offsetY.animateTo(0f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        scope.launch {
+                            offsetY.animateTo(0f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))
+                        }
+                    },
+                    onVerticalDrag = { change, dragAmount ->
+                        if (dragAmount > 0 || offsetY.value > 0) {
+                            change.consume()
+                            val next = (offsetY.value + dragAmount).coerceAtLeast(0f)
+                            scope.launch { offsetY.snapTo(next) }
+                        }
+                    },
+                )
+            }
             .clip(shape)
             .then(
                 if (reduceDynamicBlur) {

@@ -107,4 +107,11 @@ object LocalPlaylistStore {
     fun getPlaylist(id: String): LocalPlaylist? {
         return _playlists.value.firstOrNull { it.id == id }
     }
+
+    fun exportPlaylists(): List<LocalPlaylist> = _playlists.value
+
+    fun importPlaylists(incoming: List<LocalPlaylist>) {
+        _playlists.value = incoming
+        persist()
+    }
 }

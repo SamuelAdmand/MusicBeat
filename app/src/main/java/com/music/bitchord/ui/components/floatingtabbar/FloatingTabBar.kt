@@ -238,7 +238,7 @@ fun FloatingTabBar(
 class FloatingTabBarScrollConnection(
     initialIsInline: Boolean = false,
     private val scrollThresholdPx: Float,
-    private val inlineBehavior: FloatingTabBarInlineBehavior = FloatingTabBarInlineBehavior.OnScrollDown
+    var inlineBehavior: FloatingTabBarInlineBehavior = FloatingTabBarInlineBehavior.OnScrollDown
 ) : NestedScrollConnection {
     var isInline by mutableStateOf(initialIsInline)
         private set
@@ -322,9 +322,16 @@ fun rememberFloatingTabBarScrollConnection(
     inlineBehavior: FloatingTabBarInlineBehavior = FloatingTabBarInlineBehavior.OnScrollDown
 ): FloatingTabBarScrollConnection = with(LocalDensity.current) {
     val scrollThresholdPx = scrollThreshold.toPx()
-    remember(scrollThresholdPx, inlineBehavior, initialIsInline) {
+    val connection = remember(scrollThresholdPx, initialIsInline) {
         FloatingTabBarScrollConnection(initialIsInline, scrollThresholdPx, inlineBehavior)
     }
+    LaunchedEffect(inlineBehavior) {
+        connection.inlineBehavior = inlineBehavior
+        if (inlineBehavior == FloatingTabBarInlineBehavior.Never) {
+            connection.expand()
+        }
+    }
+    connection
 }
 
 /**

@@ -173,6 +173,7 @@ import com.music.bitchord.ui.components.BottomTab
 import com.music.bitchord.ui.components.FLOATING_BAR_MAX_WIDTH
 import com.music.bitchord.ui.components.FloatingBottomBar
 import com.music.bitchord.ui.components.GlassNavBar
+import com.music.bitchord.ui.components.floatingtabbar.FloatingTabBarInlineBehavior
 import com.music.bitchord.ui.components.floatingtabbar.rememberFloatingTabBarScrollConnection
 import com.music.bitchord.ui.components.FrostedTopBar
 import com.music.bitchord.ui.components.LastfmLoginAlert
@@ -356,10 +357,6 @@ private fun BitChordApp(
     val classicNavBar by AppSettings.classicNavBar.collectAsStateWithLifecycle()
     val useCollapsibleNavBar = !classicNavBar
     val glassSamplesBackdrop = glassActive && !reduceDynamicBlur
-    // What folds [GlassNavBar] between its expanded and inline shapes. Held here
-    // rather than inside the bar because the page's scroll is what drives it,
-    // and the page is a sibling of the bar rather than a child.
-    val navBarScroll = rememberFloatingTabBarScrollConnection()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     // Whether there is room to keep the player open beside the page rather than
     // raising it over one. Read all over what follows, because most of what the
@@ -531,6 +528,14 @@ private fun BitChordApp(
 
     val controller = rememberMediaController()
     val player = rememberPlayerState(controller)
+    val hasMusicBar = player.song != null && !playerDocked
+    val navBarScroll = rememberFloatingTabBarScrollConnection(
+        inlineBehavior = if (hasMusicBar) FloatingTabBarInlineBehavior.OnScrollDown else FloatingTabBarInlineBehavior.Never,
+    )
+    val onDismissMusicBar: () -> Unit = {
+        controller?.stop()
+        controller?.clearMediaItems()
+    }
     val shuffleEnabled by QueueShuffle.enabled.collectAsStateWithLifecycle()
     // A conversion is deliberately scoped to the current listening session.
     // Keeping the complete original row here lets Revert restore the exact
@@ -654,14 +659,14 @@ private fun BitChordApp(
     val songsLabel = stringResource(R.string.songs)
     val albumsLabel = stringResource(R.string.albums)
     val artistsLabel = stringResource(R.string.artists)
-    val foldersLabel = "Folders"
+    val playlistsLabel = stringResource(R.string.playlists)
     val searchLabel = stringResource(R.string.search)
-    val tabs = remember(songsLabel, albumsLabel, artistsLabel, foldersLabel, searchLabel) {
+    val tabs = remember(songsLabel, albumsLabel, artistsLabel, playlistsLabel, searchLabel) {
         listOf(
             BottomTab(songsLabel, Icons.Rounded.MusicNote),
             BottomTab(albumsLabel, Icons.Rounded.Album),
             BottomTab(artistsLabel, Icons.Rounded.Person),
-            BottomTab(foldersLabel, Icons.Rounded.Folder),
+            BottomTab(playlistsLabel, Icons.AutoMirrored.Rounded.QueueMusic),
             BottomTab(searchLabel, BitChordIcons.Search),
         )
     }
@@ -1968,7 +1973,7 @@ private fun BitChordApp(
                                 onSongTagsOrLyricsSaved = { viewModel.reloadLyrics(it) },
                             )
                         }
-                        TAB_FOLDERS -> if (!hasStoragePermission) {
+                        TAB_PLAYLISTS -> if (!hasStoragePermission) {
                             Box(modifier = Modifier.fillMaxSize().padding(listPadding), contentAlignment = Alignment.Center) {
                                 LocalPermissionCard(
                                     onRequestPermission = requestDefaultPermission,
@@ -2005,7 +2010,7 @@ private fun BitChordApp(
                                     )
                                 },
                                 contentPadding = listPadding,
-                                initialTab = LOCAL_TAB_FOLDERS,
+                                initialTab = LOCAL_TAB_PLAYLISTS,
                                 showTabRow = false,
                                 onPlayNext = playNext,
                                 onAddToQueue = addToQueue,
@@ -2150,6 +2155,7 @@ private fun BitChordApp(
                         },
                         onNext = { controller?.seekToNextMediaItem() },
                         onExpand = { showNowPlaying = true },
+                        onDismiss = onDismissMusicBar,
                         useGlass = glassActive,
                         hazeState = hazeState,
                         modifier = Modifier
@@ -2185,6 +2191,7 @@ private fun BitChordApp(
                             },
                             onNext = { controller?.seekToNextMediaItem() },
                             onExpand = { showNowPlaying = true },
+                            onDismiss = onDismissMusicBar,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -3106,7 +3113,7 @@ private val DETAIL_TITLE_DROP = 320.dp
 private const val TAB_SONGS = 0
 private const val TAB_ALBUMS = 1
 private const val TAB_ARTISTS = 2
-private const val TAB_FOLDERS = 3
+private const val TAB_PLAYLISTS = 3
 private const val TAB_SEARCH = 4
 
 

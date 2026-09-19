@@ -352,6 +352,9 @@ object AppSettings {
     /** When true, uses the classic stacked mini player + bottom bar instead of the collapsible floating bar. */
     val classicNavBar = MutableStateFlow(false)
 
+    /** When true, hides labels in the bottom navigation bar and displays only icons. */
+    val hideNavigationBarLabels = MutableStateFlow(false)
+
     /** Blurs unfocused lyric lines, keeping the active line sharp. */
     val lyricsBlur = MutableStateFlow(true)
 
@@ -687,6 +690,7 @@ object AppSettings {
         reduceDynamicBlur.value = prefs.getBoolean(KEY_REDUCE_BLUR, false)
         liquidGlass.value = prefs.getBoolean(KEY_LIQUID_GLASS, false)
         classicNavBar.value = prefs.getBoolean(KEY_CLASSIC_NAV_BAR, false)
+        hideNavigationBarLabels.value = prefs.getBoolean(KEY_HIDE_NAVIGATION_BAR_LABELS, false)
         lyricsBlur.value = prefs.getBoolean(KEY_LYRICS_BLUR, true)
         if (highPerformanceMode.value) {
             reduceAnimation.value = false
@@ -958,6 +962,11 @@ object AppSettings {
     fun setClassicNavBar(value: Boolean) {
         classicNavBar.value = value
         prefs.edit().putBoolean(KEY_CLASSIC_NAV_BAR, value).apply()
+    }
+
+    fun setHideNavigationBarLabels(value: Boolean) {
+        hideNavigationBarLabels.value = value
+        prefs.edit().putBoolean(KEY_HIDE_NAVIGATION_BAR_LABELS, value).apply()
     }
 
     fun setHighPerformanceMode(value: Boolean) {
@@ -1409,7 +1418,15 @@ object AppSettings {
      */
     fun exportPrefs(): Map<String, Any?> {
         if (!this::prefs.isInitialized) return emptyMap()
-        return prefs.all.filterKeys { it !in SECRETS && it !in DEVICE_LOCAL }
+        return prefs.all.filterKeys {
+            it !in SECRETS &&
+                it !in DEVICE_LOCAL &&
+                it !in OBSOLETE_ONLINE_KEYS &&
+                !it.startsWith("discord_") &&
+                !it.startsWith("lastfm_") &&
+                !it.startsWith("listenbrainz_") &&
+                !it.startsWith("spotify_")
+        }
     }
 
     /**
@@ -1426,7 +1443,15 @@ object AppSettings {
         val kept = prefs.all.filterKeys { it in SECRETS || it in DEVICE_LOCAL }
         prefs.edit().apply {
             clear()
-            val incoming = values.filterKeys { it !in SECRETS && it !in DEVICE_LOCAL }
+            val incoming = values.filterKeys {
+                it !in SECRETS &&
+                    it !in DEVICE_LOCAL &&
+                    it !in OBSOLETE_ONLINE_KEYS &&
+                    !it.startsWith("discord_") &&
+                    !it.startsWith("lastfm_") &&
+                    !it.startsWith("listenbrainz_") &&
+                    !it.startsWith("spotify_")
+            }
             (kept + incoming).forEach { (key, value) ->
                 when (value) {
                     is Boolean -> putBoolean(key, value)
@@ -1457,19 +1482,39 @@ object AppSettings {
     /**
      * Preferences that describe *this device* rather than this configuration,
      * and so are neither exported nor overwritten by an import.
-     *
-     * [Downloads][com.music.bitchord.download.Downloads] keeps its record of
-     * what is saved in this same preference file, and that record is a list of
-     * files on this phone's storage. Carrying it into a backup would restore a
-     * folder full of tracks that are not here; clearing it on import would leave
-     * the files on disk with nothing pointing at them, which is worse — the
-     * Downloads page would read as empty while the space stayed used.
      */
     private val DEVICE_LOCAL = setOf(
         "downloaded_tracks",
         "downloaded_tracks_metadata",
         "downloaded_collections",
         KEY_LAST_VERSION_CODE,
+    )
+
+    private val OBSOLETE_ONLINE_KEYS = setOf(
+        "audio_quality",
+        "audio_quality_wifi",
+        "audio_quality_cellular",
+        "audio_quality_download",
+        "wifi_only_downloads",
+        "export_downloads",
+        "lossless_audio",
+        "audio_cache_limit_bytes",
+        "animated_canvas",
+        "canvas_over_cellular",
+        "synced_lyrics",
+        "lyrics_sources",
+        "lyrics_source_order",
+        "lyrics_sourceOrder",
+        "prioritize_syllable_sync",
+        "show_lyrics_logs",
+        "auto_embed_lyrics",
+        "lyrics_blur",
+        "downloaded_music_sort",
+        "downloaded_artist_sort",
+        "downloaded_music_view_type",
+        "downloaded_tracks",
+        "downloaded_tracks_metadata",
+        "downloaded_collections",
     )
 
     const val DEFAULT_CACHE_LIMIT_BYTES = 512L * 1024 * 1024
@@ -1509,6 +1554,7 @@ object AppSettings {
     private const val KEY_REDUCE_BLUR = "reduce_dynamic_blur"
     private const val KEY_LIQUID_GLASS = "liquid_glass"
     private const val KEY_CLASSIC_NAV_BAR = "classic_nav_bar"
+    private const val KEY_HIDE_NAVIGATION_BAR_LABELS = "hide_navigation_bar_labels"
     private const val KEY_LYRICS_BLUR = "lyrics_blur"
     private const val KEY_ANIMATED_CANVAS = "animated_canvas"
     private const val KEY_CANVAS_OVER_CELLULAR = "canvas_over_cellular"

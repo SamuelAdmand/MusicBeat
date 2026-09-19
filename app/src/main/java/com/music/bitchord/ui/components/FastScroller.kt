@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -34,6 +35,7 @@ import com.music.bitchord.ui.components.fastscroll.FastScrollPopup
 import com.music.bitchord.ui.components.fastscroll.FastScrollThumb
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -55,6 +57,9 @@ fun FastScroller(
     headerCount: Int = 1,
     minItemsForFastScroll: Int = 6,
 ) {
+    val density = LocalDensity.current
+    val fallbackItemHeightPx = with(density) { 64.dp.toPx() }
+
     FastScrollerCore(
         itemCount = itemCount,
         scrollProgress = {
@@ -71,10 +76,12 @@ fun FastScroller(
             ) {
                 1f
             } else {
-                val visibleCount = visibleItems.size
-                val maxFirstIndex = (totalItems - visibleCount).coerceAtLeast(1)
-                val itemSize = firstItem.size.toFloat().coerceAtLeast(1f)
-                val subItemOffset = (-firstItem.offset.toFloat() / itemSize).coerceIn(0f, 1f)
+                val viewportHeight = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).toFloat()
+                val avgItemHeight = (visibleItems.sumOf { it.size }.toFloat() / visibleItems.size).coerceAtLeast(1f)
+                val estimatedVisibleCount = (viewportHeight / avgItemHeight).coerceAtLeast(1f)
+                val maxFirstIndex = (totalItems - estimatedVisibleCount).coerceAtLeast(1f)
+                val firstItemSize = firstItem.size.toFloat().coerceAtLeast(1f)
+                val subItemOffset = (-firstItem.offset.toFloat() / firstItemSize).coerceIn(0f, 1f)
                 val currentIndex = firstItem.index + subItemOffset
                 (currentIndex / maxFirstIndex).coerceIn(0f, 1f)
             }
@@ -86,29 +93,36 @@ fun FastScroller(
         targetItemIndexForFraction = { fraction ->
             val layoutInfo = listState.layoutInfo
             val totalItems = layoutInfo.totalItemsCount.takeIf { it > 0 } ?: (itemCount + headerCount)
-            val visibleCount = layoutInfo.visibleItemsInfo.size.takeIf { it > 0 } ?: 8
-            val maxFirstIndex = (totalItems - visibleCount).coerceAtLeast(1)
-            val targetIndex = (fraction * maxFirstIndex).roundToInt().coerceIn(0, maxFirstIndex)
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val viewportHeight = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).toFloat().coerceAtLeast(1f)
+            val avgItemHeight = if (visibleItems.isNotEmpty()) {
+                (visibleItems.sumOf { it.size }.toFloat() / visibleItems.size).coerceAtLeast(1f)
+            } else {
+                fallbackItemHeightPx
+            }
+            val estimatedVisibleCount = (viewportHeight / avgItemHeight).coerceAtLeast(1f)
+            val maxFirstIndex = (totalItems - estimatedVisibleCount).coerceAtLeast(1f)
+            val targetIndex = (fraction * maxFirstIndex).roundToInt().coerceIn(0, (totalItems - 1).coerceAtLeast(0))
             (targetIndex - headerCount).coerceIn(0, (itemCount - 1).coerceAtLeast(0))
         },
         isScrollInProgress = { listState.isScrollInProgress },
         onScrollToFraction = { fraction ->
             val layoutInfo = listState.layoutInfo
             val totalItems = layoutInfo.totalItemsCount.takeIf { it > 0 } ?: (itemCount + headerCount)
-            val visibleCount = layoutInfo.visibleItemsInfo.size.takeIf { it > 0 } ?: 8
-            val maxFirstIndex = (totalItems - visibleCount).coerceAtLeast(1)
-            if (fraction <= 0.005f) {
-                listState.scrollToItem(0, 0)
-            } else if (fraction >= 0.995f) {
-                listState.scrollToItem(totalItems - 1, 0)
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val viewportHeight = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).toFloat().coerceAtLeast(1f)
+            val avgItemHeight = if (visibleItems.isNotEmpty()) {
+                (visibleItems.sumOf { it.size }.toFloat() / visibleItems.size).coerceAtLeast(1f)
             } else {
-                val exactTarget = fraction * maxFirstIndex
-                val targetIndex = exactTarget.toInt().coerceIn(0, maxFirstIndex)
-                val remainder = exactTarget - targetIndex
-                val avgSize = layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 150
-                val scrollOffset = (remainder * avgSize).roundToInt()
-                listState.scrollToItem(targetIndex, scrollOffset)
+                fallbackItemHeightPx
             }
+            val estimatedVisibleCount = (viewportHeight / avgItemHeight).coerceAtLeast(1f)
+            val maxFirstIndex = (totalItems - estimatedVisibleCount).coerceAtLeast(1f)
+            val exactTarget = fraction * maxFirstIndex
+            val targetIndex = exactTarget.toInt().coerceIn(0, (totalItems - 1).coerceAtLeast(0))
+            val remainder = exactTarget - targetIndex
+            val scrollOffset = (remainder * avgItemHeight).roundToInt()
+            listState.scrollToItem(targetIndex, scrollOffset)
         },
         sectionNameForIndex = sectionNameForIndex,
         modifier = modifier,
@@ -132,6 +146,9 @@ fun FastScroller(
     headerCount: Int = 1,
     minItemsForFastScroll: Int = 6,
 ) {
+    val density = LocalDensity.current
+    val fallbackRowHeightPx = with(density) { 180.dp.toPx() }
+
     FastScrollerCore(
         itemCount = itemCount,
         scrollProgress = {
@@ -148,8 +165,10 @@ fun FastScroller(
             ) {
                 1f
             } else {
-                val visibleCount = visibleItems.size
-                val maxFirstIndex = (totalItems - visibleCount).coerceAtLeast(1)
+                val viewportHeight = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).toFloat()
+                val avgRowHeight = (visibleItems.sumOf { it.size.height }.toFloat() / visibleItems.size).coerceAtLeast(1f)
+                val estimatedVisibleCount = (viewportHeight / avgRowHeight).coerceAtLeast(1f)
+                val maxFirstIndex = (totalItems - estimatedVisibleCount).coerceAtLeast(1f)
                 val itemHeight = firstItem.size.height.toFloat().coerceAtLeast(1f)
                 val subItemOffset = (-firstItem.offset.y.toFloat() / itemHeight).coerceIn(0f, 1f)
                 val currentIndex = firstItem.index + subItemOffset
@@ -163,29 +182,36 @@ fun FastScroller(
         targetItemIndexForFraction = { fraction ->
             val layoutInfo = gridState.layoutInfo
             val totalItems = layoutInfo.totalItemsCount.takeIf { it > 0 } ?: (itemCount + headerCount)
-            val visibleCount = layoutInfo.visibleItemsInfo.size.takeIf { it > 0 } ?: 8
-            val maxFirstIndex = (totalItems - visibleCount).coerceAtLeast(1)
-            val targetIndex = (fraction * maxFirstIndex).roundToInt().coerceIn(0, maxFirstIndex)
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val viewportHeight = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).toFloat().coerceAtLeast(1f)
+            val avgRowHeight = if (visibleItems.isNotEmpty()) {
+                (visibleItems.sumOf { it.size.height }.toFloat() / visibleItems.size).coerceAtLeast(1f)
+            } else {
+                fallbackRowHeightPx
+            }
+            val estimatedVisibleCount = (viewportHeight / avgRowHeight).coerceAtLeast(1f)
+            val maxFirstIndex = (totalItems - estimatedVisibleCount).coerceAtLeast(1f)
+            val targetIndex = (fraction * maxFirstIndex).roundToInt().coerceIn(0, (totalItems - 1).coerceAtLeast(0))
             (targetIndex - headerCount).coerceIn(0, (itemCount - 1).coerceAtLeast(0))
         },
         isScrollInProgress = { gridState.isScrollInProgress },
         onScrollToFraction = { fraction ->
             val layoutInfo = gridState.layoutInfo
             val totalItems = layoutInfo.totalItemsCount.takeIf { it > 0 } ?: (itemCount + headerCount)
-            val visibleCount = layoutInfo.visibleItemsInfo.size.takeIf { it > 0 } ?: 8
-            val maxFirstIndex = (totalItems - visibleCount).coerceAtLeast(1)
-            if (fraction <= 0.005f) {
-                gridState.scrollToItem(0, 0)
-            } else if (fraction >= 0.995f) {
-                gridState.scrollToItem(totalItems - 1, 0)
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val viewportHeight = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).toFloat().coerceAtLeast(1f)
+            val avgRowHeight = if (visibleItems.isNotEmpty()) {
+                (visibleItems.sumOf { it.size.height }.toFloat() / visibleItems.size).coerceAtLeast(1f)
             } else {
-                val exactTarget = fraction * maxFirstIndex
-                val targetIndex = exactTarget.toInt().coerceIn(0, maxFirstIndex)
-                val remainder = exactTarget - targetIndex
-                val avgHeight = layoutInfo.visibleItemsInfo.firstOrNull()?.size?.height ?: 200
-                val scrollOffset = (remainder * avgHeight).roundToInt()
-                gridState.scrollToItem(targetIndex, scrollOffset)
+                fallbackRowHeightPx
             }
+            val estimatedVisibleCount = (viewportHeight / avgRowHeight).coerceAtLeast(1f)
+            val maxFirstIndex = (totalItems - estimatedVisibleCount).coerceAtLeast(1f)
+            val exactTarget = fraction * maxFirstIndex
+            val targetIndex = exactTarget.toInt().coerceIn(0, (totalItems - 1).coerceAtLeast(0))
+            val remainder = exactTarget - targetIndex
+            val scrollOffset = (remainder * avgRowHeight).roundToInt()
+            gridState.scrollToItem(targetIndex, scrollOffset)
         },
         sectionNameForIndex = sectionNameForIndex,
         modifier = modifier,
@@ -266,6 +292,9 @@ fun FastScrollerCore(
         val effectiveFraction = if (isDragging) dragFraction else computedFraction
         val thumbOffsetInTrack = effectiveFraction * availableDistancePx
 
+        // Track active scroll job to avoid concurrent coroutines fighting for LazyListState scrollMutex
+        var scrollJob by remember { mutableStateOf<Job?>(null) }
+
         // Handle thumb positioning & list scrolling during drag gestures
         fun updateScroll(yInsideTrack: Float) {
             val relativeY = (yInsideTrack - thumbHeightPx / 2f).coerceIn(0f, availableDistancePx)
@@ -283,7 +312,8 @@ fun FastScrollerCore(
                 haptics.play(Haptic.Select)
             }
 
-            scope.launch {
+            scrollJob?.cancel()
+            scrollJob = scope.launch {
                 onScrollToFraction(fraction)
             }
         }
@@ -312,29 +342,53 @@ fun FastScrollerCore(
         )
 
         // ── 2. Draggable vertical track & thumb ──────────────────────────────────
+        // Keep updated state references so pointerInput lambda never reads stale values
+        val currentThumbOffset by rememberUpdatedState(thumbOffsetInTrack)
+        val currentThumbVisible by rememberUpdatedState(thumbVisible || thumbAlpha > 0.05f || isDragging)
+        val currentUpdateScroll by rememberUpdatedState(::updateScroll)
+        val touchMarginPx = with(density) { 10.dp.toPx() }
+
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .width(48.dp)
+                .width(20.dp)
                 .fillMaxHeight()
                 .padding(
                     top = contentPadding.calculateTopPadding(),
                     bottom = contentPadding.calculateBottomPadding(),
                 )
-                .pointerInput(itemCount, availableDistancePx) {
+                .pointerInput(availableDistancePx) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
+
+                        // If scrollbar is hidden or not active, do not intercept touches.
+                        // This allows underlying UI (sorting button, 3-dot buttons) to receive clicks freely.
+                        if (!currentThumbVisible) {
+                            return@awaitEachGesture
+                        }
+
+                        // Check if touch position is actually on the thumb (with a small touch slop margin)
+                        val thumbTop = currentThumbOffset - touchMarginPx
+                        val thumbBottom = currentThumbOffset + thumbHeightPx + touchMarginPx
+                        val isHit = down.position.y in thumbTop..thumbBottom
+
+                        if (!isHit) {
+                            // Touch was outside the thumb; pass through to list/buttons below.
+                            return@awaitEachGesture
+                        }
+
+                        // Touch is directly on the thumb: consume and engage dragging
+                        down.consume()
                         isDragging = true
                         thumbVisible = true
-                        updateScroll(down.position.y)
-                        down.consume()
+                        currentUpdateScroll(down.position.y)
 
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
                             if (!change.pressed) break
                             change.consume()
-                            updateScroll(change.position.y)
+                            currentUpdateScroll(change.position.y)
                         }
                         isDragging = false
                     }

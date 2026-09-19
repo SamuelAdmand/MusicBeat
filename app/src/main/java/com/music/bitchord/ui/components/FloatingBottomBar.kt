@@ -144,6 +144,7 @@ fun FloatingBottomBar(
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val useGlass = LocalLiquidGlassEnabled.current && isGlassSupported()
     val reduceAnimation by AppSettings.reduceAnimation.collectAsStateWithLifecycle()
+    val hideNavigationBarLabels by AppSettings.hideNavigationBarLabels.collectAsStateWithLifecycle()
     // The glass settle is exactly the motion "reduce animation" promises to
     // drop — snapping both the indicator's travel and the glyph's pop to
     // their target leaves the tap itself instant rather than eased.
@@ -298,6 +299,7 @@ fun FloatingBottomBar(
                     glassSpec = glassSpec,
                     selectedTint = adaptiveTint,
                     unselectedTint = adaptiveTint?.copy(alpha = 0.65f),
+                    hideLabel = hideNavigationBarLabels,
                     onClick = { onTabSelected(index) },
                     modifier = Modifier.weight(1f),
                 )
@@ -316,6 +318,7 @@ private fun BottomBarItem(
     /** Overrides the theme's primary/onSurfaceVariant tint — see the glass branch above. */
     selectedTint: Color? = null,
     unselectedTint: Color? = null,
+    hideLabel: Boolean = false,
 ) {
     // The same spring the indicator rides, so the glyph arriving and the glass
     // arriving are one movement rather than two that nearly agree.
@@ -359,13 +362,15 @@ private fun BottomBarItem(
                     scaleY = scale
                 },
         )
-        Spacer(Modifier.height(TAB_ICON_LABEL_GAP))
-        Text(
-            text = tab.label,
-            style = MaterialTheme.typography.labelSmall,
-            color = tint,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (!hideLabel) {
+            Spacer(Modifier.height(TAB_ICON_LABEL_GAP))
+            Text(
+                text = tab.label,
+                style = MaterialTheme.typography.labelSmall,
+                color = tint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }

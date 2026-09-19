@@ -204,7 +204,7 @@
     <string name="skip_silence">Skip silence</string>
     <string name="skip_silence_subtitle">Trim gaps longer than a second</string>
     <string name="equalizer">Equalizer</string>
-    <string name="equalizer_subtitle">Your device\'s system panel</string>
+    <string name="equalizer_subtitle">Built-in 5-band EQ &amp; audio effects</string>
     <string name="show_nerd_stats">Show stats for nerds</string>
     <string name="show_nerd_stats_subtitle">Codec, bitrate and sample rate on the player</string>
     <string name="theme">Theme</string>
@@ -217,6 +217,8 @@
     <string name="liquid_glass_unavailable">Requires Android 12 or newer</string>
     <string name="classic_nav_bar">Classic navigation bar</string>
     <string name="classic_nav_bar_subtitle">Use separate stacked mini player and bottom bar instead of collapsible floating bar</string>
+    <string name="hide_nav_bar_labels">Hide navigation bar labels</string>
+    <string name="hide_nav_bar_labels_subtitle">Show only icons in the bottom navigation bar</string>
     <string name="full_screen_cover_art">Full-screen cover art</string>
     <string name="legacy_mesh_gradient">Legacy mesh gradient</string>
     <string name="legacy_mesh_gradient_subtitle">Brings back the drifting colour blobs behind the player from v1.5</string>
@@ -688,4 +690,6 @@
     <string name="use_this_profile">Use this profile</string>
     <string name="switch_profile_hint">Switch using the avatar, then use this profile.</string>
     <string name="profile_unavailable">No signed-in profile is available on this page yet.</string>
+    <string name="music_folders">Music folders</string>
+    <string name="music_folders_subtitle">Manage and exclude audio folders from library</string>
 </resources>

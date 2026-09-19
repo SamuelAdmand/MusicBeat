@@ -71,7 +71,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedTextField
+import com.music.bitchord.feature.localmusic.domain.model.LocalFolder
+import com.music.bitchord.feature.localmusic.ui.components.BlacklistedFoldersSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -162,6 +165,7 @@ fun SettingsScreen(
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val liquidGlass by AppSettings.liquidGlass.collectAsStateWithLifecycle()
     val classicNavBar by AppSettings.classicNavBar.collectAsStateWithLifecycle()
+    val hideNavBarLabels by AppSettings.hideNavigationBarLabels.collectAsStateWithLifecycle()
     val liquidGlassSupported = isGlassSupported()
     val lyricsBlur by AppSettings.lyricsBlur.collectAsStateWithLifecycle()
     val fullBleedArtwork by AppSettings.fullBleedArtwork.collectAsStateWithLifecycle()
@@ -219,7 +223,17 @@ fun SettingsScreen(
     var confirmImport by remember { mutableStateOf(false) }
     var showPerformanceWarning by remember { mutableStateOf(false) }
     var showPerformanceConfirmation by remember { mutableStateOf(false) }
+    var showEqualizerSheet by remember { mutableStateOf(false) }
+    var showManageFoldersSheet by remember { mutableStateOf(false) }
+    val manageFoldersSheetState = rememberModalBottomSheetState()
+    var discoveredFolders by remember { mutableStateOf<List<LocalFolder>>(emptyList()) }
     val backupScope = rememberCoroutineScope()
+
+    LaunchedEffect(showManageFoldersSheet) {
+        if (showManageFoldersSheet) {
+            discoveredFolders = LocalMediaRepository.getAllDiscoveredFolders(context)
+        }
+    }
 
     val batterySettingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -257,8 +271,16 @@ fun SettingsScreen(
         if (target == null) return@rememberLauncherForActivityResult
         backupScope.launch {
             exportStatus = Backup.exportTo(context, target).fold(
-                onSuccess = { months ->
-                    context.getString(R.string.export_succeeded, context.countOfMonths(months))
+                onSuccess = { summary ->
+                    buildString {
+                        append("Exported ")
+                        val parts = mutableListOf<String>()
+                        if (summary.playlists > 0) parts += "${summary.playlists} ${if (summary.playlists == 1) "playlist" else "playlists"}"
+                        if (summary.hasEqualizer) parts += "equalizer"
+                        parts += "settings"
+                        if (summary.months > 0) parts += context.countOfMonths(summary.months)
+                        append(parts.joinToString(", "))
+                    }
                 },
                 onFailure = {
                     context.getString(R.string.export_failed, it.message ?: context.getString(R.string.unknown_error))
@@ -272,8 +294,17 @@ fun SettingsScreen(
         if (source == null) return@rememberLauncherForActivityResult
         backupScope.launch {
             importStatus = Backup.importFrom(context, source).fold(
-                onSuccess = {
-                    context.getString(R.string.import_succeeded, context.countOfMonths(it.months), it.from)
+                onSuccess = { summary ->
+                    buildString {
+                        append("Restored ")
+                        val parts = mutableListOf<String>()
+                        if (summary.playlists > 0) parts += "${summary.playlists} ${if (summary.playlists == 1) "playlist" else "playlists"}"
+                        if (summary.hasEqualizer) parts += "equalizer"
+                        parts += "settings"
+                        if (summary.months > 0) parts += context.countOfMonths(summary.months)
+                        append(parts.joinToString(", "))
+                        if (summary.from.isNotBlank()) append(" from ${summary.from}")
+                    }
                 },
                 onFailure = {
                     context.getString(R.string.import_failed, it.message ?: context.getString(R.string.unknown_error))
@@ -372,7 +403,7 @@ fun SettingsScreen(
                 icon = Icons.Rounded.Tune,
                 title = stringResource(R.string.equalizer),
                 subtitle = stringResource(R.string.equalizer_subtitle),
-                onClick = { openEqualizer(context, sessionId) },
+                onClick = { showEqualizerSheet = true },
             )
         }
 
@@ -459,6 +490,23 @@ fun SettingsScreen(
                     )
                 },
                 onClick = { AppSettings.setClassicNavBar(!classicNavBar) },
+            )
+            RowDivider()
+            SettingsRow(
+                icon = Icons.Rounded.LocalOffer,
+                title = stringResource(R.string.hide_nav_bar_labels),
+                subtitle = stringResource(R.string.hide_nav_bar_labels_subtitle),
+                trailing = {
+                    Switch(
+                        checked = hideNavBarLabels,
+                        onCheckedChange = AppSettings::setHideNavigationBarLabels,
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            checkedBorderColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                },
+                onClick = { AppSettings.setHideNavigationBarLabels(!hideNavBarLabels) },
             )
             RowDivider()
             // Left out where the player won't honour it: a window too wide for
@@ -626,6 +674,14 @@ fun SettingsScreen(
         }
 
         SettingsGroup(header = stringResource(R.string.local_music)) {
+            SettingsRow(
+                icon = Icons.Rounded.Folder,
+                title = stringResource(R.string.music_folders),
+                subtitle = stringResource(R.string.music_folders_subtitle),
+                trailing = { Chevron() },
+                onClick = { showManageFoldersSheet = true },
+            )
+            RowDivider()
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 SettingsRow(
                     icon = Icons.Rounded.FolderSpecial,
@@ -1071,6 +1127,26 @@ fun SettingsScreen(
                     Text(stringResource(R.string.cancel))
                 }
             },
+        )
+    }
+
+    if (showManageFoldersSheet) {
+        BlacklistedFoldersSheet(
+            folders = discoveredFolders,
+            onToggleBlacklist = { path, isBlacklisted ->
+                AppSettings.setFolderBlacklisted(path, isBlacklisted)
+                backupScope.launch {
+                    discoveredFolders = LocalMediaRepository.getAllDiscoveredFolders(context)
+                }
+            },
+            sheetState = manageFoldersSheetState,
+            onDismiss = { showManageFoldersSheet = false },
+        )
+    }
+
+    if (showEqualizerSheet) {
+        com.music.bitchord.ui.screens.equalizer.EqualizerSheet(
+            onDismiss = { showEqualizerSheet = false },
         )
     }
 
