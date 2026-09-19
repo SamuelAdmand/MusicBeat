@@ -196,7 +196,6 @@ import com.music.bitchord.ui.haptics.rememberHaptics
 import com.music.bitchord.ui.icons.BitChordIcons
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.data.NerdStats
-import com.music.bitchord.data.settings.TrackAnalysisState
 import com.music.bitchord.data.canvas.CanvasArtwork
 import com.music.bitchord.data.canvas.CanvasRepository
 import com.music.bitchord.data.lyrics.Genius
@@ -4814,15 +4813,7 @@ private fun codecLabel(mimeType: String?): String? = when {
     else -> mimeType.substringAfter('/').uppercase(Locale.ROOT)
 }
 
-/** Wording for the stats line; see [TrackAnalysisState]. */
-@Composable
-private fun TrackAnalysisState.localizedLabel(): String = when (this) {
-    TrackAnalysisState.ANALYSED -> stringResource(R.string.analysis_complete)
-    TrackAnalysisState.REFINING -> stringResource(R.string.analysis_refining)
-    TrackAnalysisState.ANALYSING -> stringResource(R.string.analysis_in_progress)
-    TrackAnalysisState.WAITING -> stringResource(R.string.waiting)
-    TrackAnalysisState.FAILED -> stringResource(R.string.failed)
-}
+
 
 /**
  * A back callback that outranks whatever else the window has registered —

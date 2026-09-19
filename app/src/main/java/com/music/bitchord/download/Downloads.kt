@@ -6,7 +6,6 @@ import android.content.SharedPreferences
 import android.net.Uri
 import com.music.bitchord.data.DebugLog as Log
 import androidx.core.content.ContextCompat
-import com.music.bitchord.data.innertube.StreamResolver
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.DownloadQuality
@@ -977,15 +976,7 @@ object Downloads {
                 },
             )
         }
-        val stream = StreamResolver.resolveForDownload(track.videoId, quality.maxKbps)
-        return Route(
-            extension = stream.downloadExtension,
-            mimeType = stream.downloadMimeType,
-            describe = "${stream.kbps}kbps ${stream.mimeType}",
-            write = { sink, onProgress ->
-                Downloader.fetch(track.videoId, stream, quality.maxKbps, sink, onProgress)
-            },
-        )
+        error("No download source available for '${track.title}'")
     }
 
     /**

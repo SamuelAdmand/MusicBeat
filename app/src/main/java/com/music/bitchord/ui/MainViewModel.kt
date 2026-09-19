@@ -22,8 +22,6 @@ import com.music.bitchord.feature.lyricseditor.data.LocalLyricsManager
 import kotlinx.coroutines.Dispatchers
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.innertube.Innertube
-import com.music.bitchord.data.innertube.PlaybackTracker
-import com.music.bitchord.data.innertube.StreamResolver
 import com.music.bitchord.auth.CapturedSession
 import com.music.bitchord.auth.WebSessionMode
 import com.music.bitchord.data.model.Account
@@ -1800,9 +1798,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     StreamChoice.remember(audio.videoId, warmed, substituted = true)
                     return@runCatching
                 }
-                // Disabled, or hasn't got it: the tap path falls back to
-                // YouTube, so that is what is worth having ready.
-                StreamResolver.resolve(audio.videoId)
             }
         }
     }
@@ -2338,12 +2333,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _selectedChannelName.value = profile.name
         }
 
-        // Every "this track can't be played" the resolver recorded under the
-        // previous session was reached under different rules. An age-gated
-        // track is the whole point of signing in, and it is the one verdict a
-        // session overturns — so a listener who signs in to play a track must
-        // not spend the next ten minutes being told it still cannot be played.
-        StreamResolver.onSessionChanged()
         val wasSignedIn = _signedIn.value
         _signedIn.value = true
         if (wasSignedIn) clearListenerState()
@@ -2371,7 +2360,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Innertube.selectChannel(profile.pageId, profile.dataSyncId, profile.authUser)
         _selectedChannelKey.value = profile.profileId
         _selectedChannelName.value = profile.name
-        StreamResolver.onSessionChanged()
         clearListenerState(restoreCached = true)
         reloadForAccount()
     }
@@ -2491,10 +2479,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         authStore.signOut()
         Innertube.cookie = null
-        // The mirror image: verdicts reached with a session in hand say nothing
-        // about what an anonymous walk will be told, and the clients stood down
-        // for refusing the session deserve a fresh hearing without it.
-        StreamResolver.onSessionChanged()
         _signedIn.value = false
         _account.value = null
         Innertube.selectChannel(null, null)

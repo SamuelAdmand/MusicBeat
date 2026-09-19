@@ -9,7 +9,6 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
-import com.music.bitchord.data.innertube.StreamResolver
 import java.io.InterruptedIOException
 
 /**
@@ -138,9 +137,7 @@ class ChunkedDataSource(
      * isn't from a client it models, costs nothing here.
      */
     private fun report(spec: DataSpec, e: Exception) {
-        if (e is HttpDataSource.InvalidResponseCodeException) {
-            StreamResolver.onPlaybackRefused(spec.uri.toString(), e.responseCode)
-        }
+        // No-op: YouTube stream resolution retired
     }
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {

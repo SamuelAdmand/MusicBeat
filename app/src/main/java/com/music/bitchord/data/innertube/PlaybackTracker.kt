@@ -235,26 +235,7 @@ object PlaybackTracker {
      *   worth repeating — the answer was a failure, not a verdict.
      */
     private suspend fun open(videoId: String): Boolean = lock.withLock {
-        // The one thing the tracking request cannot be answered without. Fetched
-        // through [StreamResolver] so it is shared with — and usually already
-        // warmed by — the resolve that is starting this very track.
-        val signatureTimestamp = StreamResolver.signatureTimestamp(videoId)
-        if (signatureTimestamp == null) {
-            TrackLog.w(TAG, "no signature timestamp yet; retrying history for $videoId")
-            return@withLock false
-        }
-        val tracking = Innertube.playbackTracking(videoId, signatureTimestamp)
-        if (tracking == null) {
-            TrackLog.d(TAG, "no playback tracking for $videoId (guest, or the player declined)")
-            // A verdict, not a failure — asking again with the same timestamp
-            // gets the same answer.
-            return@withLock true
-        }
-        val fresh = Session(videoId, Innertube.newCpn(), tracking)
-        val status = Innertube.pingPlayback(tracking.playbackUrl, fresh.cpn)
-        session = fresh
-        _registeredPlays.value++
-        TrackLog.d(TAG, "history entry created for $videoId (HTTP $status)")
+        // No-op: YouTube playback tracking retired
         true
     }
 

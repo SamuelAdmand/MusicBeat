@@ -1,7 +1,6 @@
 package com.music.bitchord.data.sources
 
 import com.music.bitchord.data.YtMusicRepository
-import com.music.bitchord.data.innertube.StreamResolver
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.Song
@@ -58,8 +57,5 @@ class YouTubeSource(
      * is applied inside [StreamResolver] from the same settings, at the point
      * where the format list is actually in hand.
      */
-    override suspend fun stream(trackId: String, request: StreamRequest): SourceStream? {
-        val url = StreamResolver.resolve(trackId)
-        return SourceStream(url = url, format = StreamFormat(codec = "opus"))
-    }
+    override suspend fun stream(trackId: String, request: StreamRequest): SourceStream? = null
 }
