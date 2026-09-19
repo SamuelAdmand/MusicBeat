@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.FolderSpecial
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.FilterAlt
@@ -159,6 +160,7 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     val skipSilence by AppSettings.skipSilence.collectAsStateWithLifecycle()
+    val doubleTapToSeek by AppSettings.doubleTapToSeek.collectAsStateWithLifecycle()
     val spatialAudio by AppSettings.spatialAudio.collectAsStateWithLifecycle()
     val nerdStats by AppSettings.showNerdStats.collectAsStateWithLifecycle()
     val reduceAnimation by AppSettings.reduceAnimation.collectAsStateWithLifecycle()
@@ -380,6 +382,23 @@ fun SettingsScreen(
                     )
                 },
                 onClick = { AppSettings.setSkipSilence(!skipSilence) },
+            )
+            RowDivider()
+            SettingsRow(
+                icon = Icons.Rounded.FastForward,
+                title = stringResource(R.string.double_tap_to_seek),
+                subtitle = stringResource(R.string.double_tap_to_seek_subtitle),
+                trailing = {
+                    Switch(
+                        checked = doubleTapToSeek,
+                        onCheckedChange = AppSettings::setDoubleTapToSeek,
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            checkedBorderColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                },
+                onClick = { AppSettings.setDoubleTapToSeek(!doubleTapToSeek) },
             )
             RowDivider()
             SettingsRow(

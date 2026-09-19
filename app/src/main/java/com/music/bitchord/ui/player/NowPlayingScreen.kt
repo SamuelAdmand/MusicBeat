@@ -203,6 +203,7 @@ import com.music.bitchord.data.lyrics.Genius
 import com.music.bitchord.data.lyrics.LyricLine
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.ui.components.LyricsLogConsole
+import com.music.bitchord.ui.player.components.DoubleTapSeekArea
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.AudioQuality
 import com.music.bitchord.data.model.LikeStatus
@@ -999,6 +1000,7 @@ fun NowPlayingScreen(
         label = "sleeveCollapse",
     )
     val fullBleedArt by AppSettings.fullBleedArtwork.collectAsStateWithLifecycle()
+    val doubleTapToSeek by AppSettings.doubleTapToSeek.collectAsStateWithLifecycle()
     // Full-bleed is a phone idiom, and a docked pane is a phone's width — so it
     // is asked of the player's own width rather than of the window's. Asking the
     // window is what left the pane with a square sleeve floating in a field of
@@ -1712,7 +1714,40 @@ fun NowPlayingScreen(
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    // The sleeve proper. Separated from the box around it so
+                    var pendingSeekTargetMs by remember { mutableStateOf<Long?>(null) }
+                    var lastSeekTriggerTime by remember { mutableLongStateOf(0L) }
+
+                    LaunchedEffect(lastSeekTriggerTime) {
+                        if (lastSeekTriggerTime > 0L) {
+                            delay(1200L)
+                            pendingSeekTargetMs = null
+                        }
+                    }
+
+                    DoubleTapSeekArea(
+                        enabled = doubleTapToSeek && !queueOpen && !lyricsOpen && p < 0.5f,
+                        onSeekRelative = { deltaSeconds ->
+                            val now = SystemClock.uptimeMillis()
+                            val base = if (now - lastSeekTriggerTime < 1200L && pendingSeekTargetMs != null) {
+                                pendingSeekTargetMs!!
+                            } else {
+                                positionMs
+                            }
+                            val deltaMs = deltaSeconds * 1000L
+                            val target = if (durationMs > 0L) {
+                                (base + deltaMs).coerceIn(0L, durationMs)
+                            } else {
+                                (base + deltaMs).coerceAtLeast(0L)
+                            }
+                            pendingSeekTargetMs = target
+                            lastSeekTriggerTime = now
+                            onSeek(target)
+                            haptics.play(if (deltaSeconds > 0) Haptic.SkipNext else Haptic.SkipPrevious)
+                        },
+                        shape = RoundedCornerShape(lerp(10.dp, 7.dp, p)),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        // The sleeve proper. Separated from the box around it so
                     // the banner can dissolve the card — shadow, corners, tile
                     // and all — without taking the stats line with it.
                     //
@@ -1854,6 +1889,7 @@ fun NowPlayingScreen(
                                 )
                             }
                         }
+                    }
                     }
                 }
 

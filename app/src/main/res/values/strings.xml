@@ -203,6 +203,8 @@
     <string name="blocking">Blocking</string>
     <string name="skip_silence">Skip silence</string>
     <string name="skip_silence_subtitle">Trim gaps longer than a second</string>
+    <string name="double_tap_to_seek">Double tap to seek</string>
+    <string name="double_tap_to_seek_subtitle">Double tap sides of album art to skip 5 seconds</string>
     <string name="equalizer">Equalizer</string>
     <string name="equalizer_subtitle">Built-in 5-band EQ &amp; audio effects</string>
     <string name="show_nerd_stats">Show stats for nerds</string>
