@@ -449,6 +449,9 @@ object AppSettings {
      */
     val prioritizeSyllableSync = MutableStateFlow(false)
 
+    /** User-issued credential required by api.paxsenix.org. */
+    val paxSenixApiKey = MutableStateFlow("")
+
     /** When enabled, shows lyrics fetching and Genius scraping logs in the lyrics menu/panel. */
     val showLyricsLogs = MutableStateFlow(false)
 
@@ -708,6 +711,8 @@ object AppSettings {
         lyricsSources.value = readLyricsSources()
         lyricsSourceOrder.value = readLyricsSourceOrder()
         prioritizeSyllableSync.value = prefs.getBoolean(KEY_PRIORITIZE_SYLLABLE_SYNC, false)
+        paxSenixApiKey.value = prefs.getString(KEY_PAXSENIX_API_KEY, "").orEmpty()
+        com.music.bitchord.data.lyrics.PaxSenix.setApiKey(paxSenixApiKey.value)
         showLyricsLogs.value = prefs.getBoolean(KEY_SHOW_LYRICS_LOGS, false)
         autoEmbedLyrics.value = prefs.getBoolean(KEY_AUTO_EMBED_LYRICS, true)
         audioCacheLimitBytes.value = prefs.getLong(KEY_CACHE_LIMIT, DEFAULT_CACHE_LIMIT_BYTES)
@@ -1045,6 +1050,13 @@ object AppSettings {
     fun setPrioritizeSyllableSync(value: Boolean) {
         prioritizeSyllableSync.value = value
         prefs.edit().putBoolean(KEY_PRIORITIZE_SYLLABLE_SYNC, value).apply()
+    }
+
+    fun setPaxSenixApiKey(value: String) {
+        val normalized = value.trim()
+        paxSenixApiKey.value = normalized
+        prefs.edit().putString(KEY_PAXSENIX_API_KEY, normalized).apply()
+        com.music.bitchord.data.lyrics.PaxSenix.setApiKey(normalized)
     }
 
     fun setShowLyricsLogs(value: Boolean) {
@@ -1486,6 +1498,7 @@ object AppSettings {
         KEY_LASTFM_SECRET,
         KEY_LISTENBRAINZ_TOKEN,
         KEY_SPOTIFY_SPDC_TOKEN,
+        KEY_PAXSENIX_API_KEY,
     )
 
     /**
@@ -1574,6 +1587,7 @@ object AppSettings {
     private const val KEY_LYRICS_SOURCES = "lyrics_sources"
     private const val KEY_LYRICS_SOURCE_ORDER = "lyrics_source_order"
     private const val KEY_PRIORITIZE_SYLLABLE_SYNC = "prioritize_syllable_sync"
+    private const val KEY_PAXSENIX_API_KEY = "paxsenix_api_key"
     private const val KEY_SHOW_LYRICS_LOGS = "show_lyrics_logs"
     private const val KEY_AUTO_EMBED_LYRICS = "auto_embed_lyrics"
     private const val KEY_REPLAY_GENRES = "replay_genres"

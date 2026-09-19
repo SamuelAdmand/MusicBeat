@@ -28,6 +28,16 @@ enum class LyricsSource(
         detail = "Apple Music timings again, on a second host",
         wordSynced = true,
     ),
+    PAXSENIX_SPOTIFY(
+        label = "PaxSenix: Spotify",
+        detail = "Spotify lyrics with PaxSenix fallback; API key required",
+        wordSynced = false,
+    ),
+    PAXSENIX_MUSIXMATCH(
+        label = "PaxSenix: Musixmatch",
+        detail = "Musixmatch timings with PaxSenix fallback; API key required",
+        wordSynced = true,
+    ),
     BETTER_LYRICS(
         label = "BetterLyrics",
         detail = "Apple Music timings, word by word",
@@ -37,6 +47,11 @@ enum class LyricsSource(
         label = "SimpMusic",
         detail = "Matched on the video, so never the wrong edit",
         wordSynced = true,
+    ),
+    MEGALOBIZ(
+        label = "Megalobiz",
+        detail = "Community-made, whole-line LRC",
+        wordSynced = false,
     ),
     KUGOU(
         label = "KuGou",
