@@ -29,6 +29,22 @@ object BetterLyrics {
         durationMs: Long,
         album: String? = null,
     ): List<LyricLine>? = withContext(Dispatchers.IO) {
+        val direct = fetch(title, artist, durationMs, album)
+        if (!direct.isNullOrEmpty()) return@withContext direct
+
+        val cleanArtist = cleanArtistForSearch(artist)
+        if (cleanArtist.isNotBlank() && !cleanArtist.equals(artist.trim(), ignoreCase = true)) {
+            return@withContext fetch(title, cleanArtist, durationMs, album)
+        }
+        null
+    }
+
+    private fun fetch(
+        title: String,
+        artist: String,
+        durationMs: Long,
+        album: String?,
+    ): List<LyricLine>? {
         val url = BASE.toHttpUrl().newBuilder()
             .addQueryParameter("s", title)
             .addQueryParameter("a", artist)
@@ -39,12 +55,12 @@ object BetterLyrics {
             }
             .build()
 
-        val body = lyricsGet(url.toString()) ?: return@withContext null
+        val body = lyricsGet(url.toString()) ?: return null
         val ttml = runCatching {
             (lyricsJson.parseToJsonElement(body) as? JsonObject)
                 ?.get("ttml")?.jsonPrimitive?.contentOrNull
-        }.getOrNull() ?: return@withContext null
+        }.getOrNull() ?: return null
 
-        TtmlLyrics.parse(ttml).takeIf { it.isNotEmpty() }
+        return TtmlLyrics.parse(ttml).takeIf { it.isNotEmpty() }
     }
 }

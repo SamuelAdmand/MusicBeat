@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.model.durationMillis
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.feature.lyricseditor.data.LocalLyricsManager
 import com.music.bitchord.feature.lyricseditor.domain.model.LyricsEditorSource
@@ -96,10 +97,12 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _isLoading.value = true
             val sources = providers ?: AppSettings.lyricsSources.value
+            val durationMs = activeSong?.durationMillis() ?: 0L
             val result = LocalLyricsManager.autoDownload(
                 title = title,
                 artist = artist,
                 album = album,
+                durationMs = durationMs,
                 sources = sources,
             )
             _isLoading.value = false
@@ -126,10 +129,12 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
     ) {
         viewModelScope.launch {
             _isSearchingResults.value = true
+            val durationMs = activeSong?.durationMillis() ?: 0L
             val items = LocalLyricsManager.searchAllProviders(
                 title = title,
                 artist = artist,
                 album = album,
+                durationMs = durationMs,
                 providers = providers,
             )
             _searchResults.value = items

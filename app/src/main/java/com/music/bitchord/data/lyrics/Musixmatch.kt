@@ -47,13 +47,26 @@ object Musixmatch {
         val seconds = (durationMs / 1000).toInt()
         val track = bestTrack(title, artist, seconds) ?: return@withContext null
         val subtitle = if (track.hasSubtitles == 1) fetchSubtitle(track.trackId) else null
-        val lrc = subtitle?.let(::subtitleToLrc)?.takeIf { it.isNotBlank() } ?: return@withContext null
-        LrcLib.parseLrc(lrc).takeIf { it.isNotEmpty() }
+        val lrc = subtitle?.let(::subtitleToLrc)?.takeIf { it.isNotBlank() }
+        if (lrc != null) {
+            val lines = LrcLib.parseLrc(lrc).takeIf { it.isNotEmpty() }
+            if (lines != null) return@withContext lines
+        }
+        if (track.hasLyrics == 1) {
+            val plain = fetchLyrics(track.trackId)?.takeIf { it.isNotBlank() }
+            if (plain != null) {
+                return@withContext plain.lines().map { LyricLine(0L, it.trim()) }
+            }
+        }
+        null
     }
 
     private suspend fun bestTrack(title: String, artist: String, seconds: Int): Track? {
         val tracks = searchTrack(title, artist) ?: return null
-        return tracks.maxByOrNull { score(it, title, artist, seconds) }
+        return tracks.map { it to score(it, title, artist, seconds) }
+            .filter { it.second >= 40.0 }
+            .maxByOrNull { it.second }
+            ?.first
     }
 
     private fun score(track: Track, title: String, artist: String, seconds: Int): Double {
@@ -65,27 +78,39 @@ object Musixmatch {
             name.contains(targetTitle) || targetTitle.contains(name) -> 40.0
             else -> 0.0
         }
-        if (track.artistName.trim().lowercase(Locale.ROOT).contains(artist.trim().lowercase(Locale.ROOT))) {
-            score += 40.0
+        val candArtist = track.artistName.trim().lowercase(Locale.ROOT)
+        val targetArtist = artist.trim().lowercase(Locale.ROOT)
+        val primary = cleanArtistForSearch(artist).lowercase(Locale.ROOT)
+        val tokens = splitArtistTokens(artist)
+        val candTokens = splitArtistTokens(track.artistName)
+
+        score += when {
+            candArtist == targetArtist || candArtist.contains(targetArtist) || targetArtist.contains(candArtist) -> 40.0
+            candArtist == primary || candArtist.contains(primary) || primary.contains(candArtist) -> 35.0
+            tokens.any { t -> candTokens.any { c -> t == c || t.contains(c) || c.contains(t) } } -> 30.0
+            else -> 0.0
         }
-        track.trackLength?.let { length ->
-            val diff = abs(length - seconds)
-            score += when {
-                diff <= 2 -> 30.0
-                diff <= 5 -> 15.0
-                diff <= 10 -> 5.0
-                else -> -20.0
+        if (seconds > 0) {
+            track.trackLength?.let { length ->
+                val diff = abs(length - seconds)
+                score += when {
+                    diff <= 2 -> 30.0
+                    diff <= 5 -> 15.0
+                    diff <= 10 -> 5.0
+                    else -> -20.0
+                }
             }
         }
         return score
     }
 
     private suspend fun searchTrack(title: String, artist: String): List<Track>? {
+        val cleanArtist = cleanArtistForSearch(artist)
         val response = signedGet { token ->
             "$BASE/track.search".toHttpUrl().newBuilder()
                 .addQueryParameter("app_id", "web-desktop-app-v1.0")
                 .addQueryParameter("q_track", title)
-                .addQueryParameter("q_artist", artist)
+                .addQueryParameter("q_artist", cleanArtist)
                 .addQueryParameter("f_has_lyrics", "1")
                 .addQueryParameter("s_track_rating", "desc")
                 .addQueryParameter("quorum_factor", "1")
@@ -96,8 +121,28 @@ object Musixmatch {
         } ?: return null
         val body = runCatching {
             lyricsJson.decodeFromString<Envelope<TrackSearchBody>>(response)
-        }.getOrNull() ?: return null
-        return body.message.body?.trackList?.map { it.track }
+        }.getOrNull()
+        val tracks = body?.message?.body?.trackList?.map { it.track }
+        if (!tracks.isNullOrEmpty()) return tracks
+
+        if (cleanArtist.isNotBlank()) {
+            val fallbackResponse = signedGet { token ->
+                "$BASE/track.search".toHttpUrl().newBuilder()
+                    .addQueryParameter("app_id", "web-desktop-app-v1.0")
+                    .addQueryParameter("q_track", title)
+                    .addQueryParameter("f_has_lyrics", "1")
+                    .addQueryParameter("s_track_rating", "desc")
+                    .addQueryParameter("quorum_factor", "1")
+                    .addQueryParameter("page_size", "10")
+                    .addQueryParameter("page", "1")
+                    .addQueryParameter("usertoken", token)
+                    .build()
+            } ?: return null
+            return runCatching {
+                lyricsJson.decodeFromString<Envelope<TrackSearchBody>>(fallbackResponse)
+            }.getOrNull()?.message?.body?.trackList?.map { it.track }
+        }
+        return null
     }
 
     private suspend fun fetchSubtitle(trackId: Long): String? {
@@ -112,6 +157,19 @@ object Musixmatch {
         return runCatching {
             lyricsJson.decodeFromString<Envelope<SubtitleBody>>(response)
         }.getOrNull()?.message?.body?.subtitle?.subtitleBody
+    }
+
+    private suspend fun fetchLyrics(trackId: Long): String? {
+        val response = signedGet { token ->
+            "$BASE/track.lyrics.get".toHttpUrl().newBuilder()
+                .addQueryParameter("app_id", "web-desktop-app-v1.0")
+                .addQueryParameter("track_id", trackId.toString())
+                .addQueryParameter("usertoken", token)
+                .build()
+        } ?: return null
+        return runCatching {
+            lyricsJson.decodeFromString<Envelope<LyricsBody>>(response)
+        }.getOrNull()?.message?.body?.lyrics?.lyricsBody?.substringBefore("******* This Lyrics is NOT for Commercial use")?.trim()
     }
 
     /** Musixmatch's `mxm` subtitle JSON — a list of `{text, time:{total}}` — turned into LRC. */
@@ -204,6 +262,7 @@ object Musixmatch {
         @SerialName("artist_name") val artistName: String = "",
         @SerialName("track_length") val trackLength: Int? = null,
         @SerialName("has_subtitles") val hasSubtitles: Int = 0,
+        @SerialName("has_lyrics") val hasLyrics: Int = 0,
     )
 
     @Serializable
@@ -211,6 +270,12 @@ object Musixmatch {
 
     @Serializable
     private data class Subtitle(@SerialName("subtitle_body") val subtitleBody: String)
+
+    @Serializable
+    private data class LyricsBody(val lyrics: Lyrics? = null)
+
+    @Serializable
+    private data class Lyrics(@SerialName("lyrics_body") val lyricsBody: String)
 
     @Serializable
     private data class SubtitleLine(val text: String, val time: SubtitleTime)

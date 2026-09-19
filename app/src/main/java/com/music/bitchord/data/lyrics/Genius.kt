@@ -99,6 +99,15 @@ object Genius {
             searchAttempts.add(SearchAttempt(cleanTitle, extractedTitle, extractedArtist))
         }
 
+        // 4. Primary artist fallback for multi-artist tags
+        val primaryArtist = cleanArtistForSearch(extractedArtist)
+        if (primaryArtist.isNotBlank() && !primaryArtist.equals(extractedArtist, ignoreCase = true)) {
+            searchAttempts.add(SearchAttempt("$primaryArtist $extractedTitle".trim(), extractedTitle, primaryArtist))
+            if (titleWithoutBrackets.isNotBlank() && titleWithoutBrackets != extractedTitle) {
+                searchAttempts.add(SearchAttempt("$primaryArtist $titleWithoutBrackets".trim(), titleWithoutBrackets, primaryArtist))
+            }
+        }
+
         // 4. Standalone extracted title without artist prefix
         if (titleWithoutBrackets.isNotBlank()) {
             searchAttempts.add(SearchAttempt(titleWithoutBrackets, titleWithoutBrackets, extractedArtist))

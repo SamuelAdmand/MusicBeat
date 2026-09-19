@@ -22,8 +22,11 @@ object PaxSenix {
     private const val APPLE_SEARCH = "https://amp-api.music.apple.com/v1/catalog/us/search"
     private const val MINIMUM_MATCH_SCORE = 10
 
+    private const val FALLBACK_APPLE_TOKEN =
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiIsImtpZCI6IldlYlBsYXlLaWQifQ.eyJpc3MiOiJBTVBXZWJQbGF5IiwiaWF0IjoxNzg5MTQ2OTA2LCJleHAiOjE3OTUxOTQ5MDYsInJvb3RfaHR0cHNfb3JpZ2luIjpbImFwcGxlLmNvbSJdfQ.N9nCdw8Bc2GRy3C_RBnCJ4MwhnHX8wz_kSzq4A3k-wfF7B_1T9JyQ0VZUMUu3HzjqWff09ZwL060B8JGAxJHTA"
+
     private val tokenMutex = Mutex()
-    private val cachedAppleToken = AtomicReference<String?>(null)
+    private val cachedAppleToken = AtomicReference<String?>(FALLBACK_APPLE_TOKEN)
 
     @Volatile
     private var apiKey: String = ""
@@ -68,7 +71,7 @@ object PaxSenix {
     ): List<LyricLine>? = withContext(Dispatchers.IO) {
         val query: HttpUrl.Builder.() -> Unit = {
             addQueryParameter("t", title)
-            addQueryParameter("a", artist)
+            addQueryParameter("a", cleanArtistForSearch(artist))
             addQueryParameter("d", (durationMs / 1000).toString())
         }
         apiBody(apiUrl("lyrics/musixmatch").apply(query).build())
@@ -82,8 +85,9 @@ object PaxSenix {
         durationMs: Long,
     ): String? {
         val token = appleToken() ?: return null
+        val cleanArtist = cleanArtistForSearch(artist)
         val url = APPLE_SEARCH.toHttpUrl().newBuilder()
-            .addQueryParameter("term", "$title $artist")
+            .addQueryParameter("term", "$title $cleanArtist".trim())
             .addQueryParameter("types", "songs")
             .addQueryParameter("limit", "10")
             .addQueryParameter("l", "en-US")
@@ -95,7 +99,7 @@ object PaxSenix {
     }
 
     private suspend fun appleToken(): String? = cachedAppleToken.get() ?: tokenMutex.withLock {
-        cachedAppleToken.get() ?: scrapeAppleToken()?.also(cachedAppleToken::set)
+        cachedAppleToken.get() ?: (scrapeAppleToken() ?: FALLBACK_APPLE_TOKEN).also(cachedAppleToken::set)
     }
 
     private fun scrapeAppleToken(): String? {
@@ -111,8 +115,9 @@ object PaxSenix {
         artist: String,
         durationMs: Long,
     ): String? {
+        val cleanArtist = cleanArtistForSearch(artist)
         val query: HttpUrl.Builder.() -> Unit = {
-            addQueryParameter("q", "$title $artist")
+            addQueryParameter("q", "$title $cleanArtist".trim())
         }
         val root = apiBody(apiUrl(path).apply(query).build())
             ?.let { runCatching { lyricsJson.parseToJsonElement(it) }.getOrNull() }
@@ -125,8 +130,9 @@ object PaxSenix {
         artist: String,
         durationMs: Long,
     ): List<LyricLine>? {
+        val cleanArtist = cleanArtistForSearch(artist)
         val url = apiUrl("lyrics/lrcget")
-            .addQueryParameter("q", "$title $artist")
+            .addQueryParameter("q", "$title $cleanArtist".trim())
             .build()
         return apiBody(url)?.let { parseLrcGet(it, title, artist, durationMs) }
     }
@@ -296,13 +302,38 @@ object PaxSenix {
     }
 
     private fun Candidate.score(wantedTitle: String, wantedArtist: String, wantedDuration: Long): Int {
-        var score = textScore(title, wantedTitle, 20, 10) + textScore(artist, wantedArtist, 15, 5)
+        val tScore = textScore(title, wantedTitle, 20, 10)
+        val aScore = artistScore(artist, wantedArtist)
+        var score = tScore + aScore
         if (wantedDuration > 0 && durationMs > 0) score += when {
             abs(durationMs - wantedDuration) < 3_000 -> 10
             abs(durationMs - wantedDuration) < 10_000 -> 5
             else -> 0
         }
         return score
+    }
+
+    private fun artistScore(candidateArtist: String, wantedArtist: String): Int {
+        if (candidateArtist.isBlank() || wantedArtist.isBlank()) return 0
+        val direct = textScore(candidateArtist, wantedArtist, 15, 8)
+        if (direct > 0) return direct
+
+        val cleanWanted = cleanArtistForSearch(wantedArtist)
+        if (cleanWanted.isNotBlank()) {
+            val cleanScore = textScore(candidateArtist, cleanWanted, 15, 8)
+            if (cleanScore > 0) return cleanScore
+        }
+
+        val candidateTokens = splitArtistTokens(candidateArtist)
+        val wantedTokens = splitArtistTokens(wantedArtist)
+
+        if (candidateTokens.any { c -> wantedTokens.any { w -> c.equals(w, ignoreCase = true) } }) {
+            return 12
+        }
+        if (candidateTokens.any { c -> wantedTokens.any { w -> c.contains(w, ignoreCase = true) || w.contains(c, ignoreCase = true) } }) {
+            return 8
+        }
+        return 0
     }
 
     private fun textScore(candidate: String, wanted: String, exact: Int, partial: Int): Int = when {
@@ -344,3 +375,13 @@ internal fun normalizePaxSenixApiKey(value: String): String {
         trimmed
     }
 }
+
+internal fun cleanArtistForSearch(artist: String): String {
+    if (artist.isBlank()) return ""
+    return artist.split(Regex("""[;/|]|\b(?:feat\.?|ft\.?)\b""")).firstOrNull()?.trim() ?: artist.trim()
+}
+
+internal fun splitArtistTokens(artist: String): List<String> =
+    artist.split(Regex("""[;/|,]|\b(?:feat\.?|ft\.?|and|&)\b"""))
+        .map { it.trim().lowercase(java.util.Locale.ROOT) }
+        .filter { it.length >= 2 }

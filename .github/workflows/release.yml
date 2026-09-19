@@ -2,14 +2,16 @@ name: Release Pipeline
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag name for the release (e.g. v1.5.2)'
-        required: true
-        default: 'v1.5.2'
+        description: 'Tag name for the release (e.g. v1.5.3)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -55,9 +57,18 @@ jobs:
       - name: Prepare and Organize Release APKs
         id: prepare_apks
         run: |
-          TAG="${{ github.ref_name }}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag_name }}" ]; then
             TAG="${{ github.event.inputs.tag_name }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            VERSION=$(grep 'versionName =' app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+            if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+              SHORT_SHA=$(git rev-parse --short HEAD)
+              TAG="v${VERSION}-${SHORT_SHA}"
+            else
+              TAG="v${VERSION}"
+            fi
           fi
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
 
@@ -119,5 +130,7 @@ jobs:
           files: release-apks/*.apk
           draft: false
           prerelease: false
+          generate_release_notes: true
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -33,6 +33,7 @@ import com.music.bitchord.data.lyrics.Megalobiz
 import com.music.bitchord.data.lyrics.Musixmatch
 import com.music.bitchord.data.lyrics.PaxSenix
 import com.music.bitchord.data.lyrics.SimpMusicLyrics
+import com.music.bitchord.data.lyrics.cleanArtistForSearch
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.feature.lyricseditor.domain.model.LyricsSearchResultItem
 import kotlinx.coroutines.Deferred
@@ -136,42 +137,22 @@ object LocalLyricsManager {
         album: String? = null,
         durationMs: Long = 0L,
     ): DownloadedLyricsResult = withContext(Dispatchers.IO) {
-        val directResult = runCatching {
-            val builder = "https://lrclib.net/api/search".toHttpUrl().newBuilder()
-                .addQueryParameter("track_name", title)
-                .addQueryParameter("artist_name", artist)
-            if (!album.isNullOrBlank()) {
-                builder.addQueryParameter("album_name", album)
-            }
-            val url = builder.build()
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "BitChord (https://github.com/bitchord)")
-                .build()
-            Http.client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    val body = response.body?.string()
-                    if (!body.isNullOrBlank()) {
-                        val hits = json.parseToJsonElement(body) as? JsonArray
-                        val firstHit = hits?.firstOrNull() as? JsonObject
-                        if (firstHit != null) {
-                            val synced = firstHit["syncedLyrics"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-                            val plain = firstHit["plainLyrics"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-                            if (!synced.isNullOrBlank() || !plain.isNullOrBlank()) {
-                                DownloadedLyricsResult(plain = plain, synced = synced)
-                            } else null
-                        } else null
-                    } else null
-                } else null
-            }
-        }.getOrNull()
+        val cleanArtist = cleanArtistForSearch(artist)
+        val normalizedArtist = if (artist.contains(";")) artist.replace(";", ",").trim() else artist.trim()
+        val directResult = queryLrcLibDirect(title, normalizedArtist, album)
+            ?: if (cleanArtist.isNotBlank() && !cleanArtist.equals(normalizedArtist, ignoreCase = true)) {
+                queryLrcLibDirect(title, cleanArtist, album)
+            } else null
 
         if (directResult != null) {
             return@withContext directResult
         }
 
         val lines = runCatching {
-            LrcLib.lyrics(title = title, artist = artist, durationMs = durationMs)
+            LrcLib.lyrics(title = title, artist = normalizedArtist, durationMs = durationMs)
+                ?: if (cleanArtist.isNotBlank() && !cleanArtist.equals(normalizedArtist, ignoreCase = true)) {
+                    LrcLib.lyrics(title = title, artist = cleanArtist, durationMs = durationMs)
+                } else null
         }.getOrNull()
 
         val synced = lines?.takeIf { it.isNotEmpty() }?.toLrc()
@@ -179,6 +160,40 @@ object LocalLyricsManager {
 
         DownloadedLyricsResult(plain = plain, synced = synced)
     }
+
+    private fun queryLrcLibDirect(
+        title: String,
+        artist: String,
+        album: String?,
+    ): DownloadedLyricsResult? = runCatching {
+        val builder = "https://lrclib.net/api/search".toHttpUrl().newBuilder()
+            .addQueryParameter("track_name", title)
+            .addQueryParameter("artist_name", artist)
+        if (!album.isNullOrBlank()) {
+            builder.addQueryParameter("album_name", album)
+        }
+        val url = builder.build()
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", "BitChord (https://github.com/bitchord)")
+            .build()
+        Http.client.newCall(request).execute().use { response ->
+            if (response.isSuccessful) {
+                val body = response.body?.string()
+                if (!body.isNullOrBlank()) {
+                    val hits = json.parseToJsonElement(body) as? JsonArray
+                    val firstHit = hits?.firstOrNull() as? JsonObject
+                    if (firstHit != null) {
+                        val synced = firstHit["syncedLyrics"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                        val plain = firstHit["plainLyrics"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                        if (!synced.isNullOrBlank() || !plain.isNullOrBlank()) {
+                            DownloadedLyricsResult(plain = plain, synced = synced)
+                        } else null
+                    } else null
+                } else null
+            } else null
+        }
+    }.getOrNull()
 
     suspend fun searchAllProviders(
         title: String,
@@ -188,6 +203,8 @@ object LocalLyricsManager {
         providers: Set<LyricsSource> = AppSettings.lyricsSources.value,
     ): List<LyricsSearchResultItem> = withContext(Dispatchers.IO) {
         val results = mutableListOf<LyricsSearchResultItem>()
+        val primaryArtist = cleanArtistForSearch(artist)
+        val normalizedArtist = if (artist.contains(";")) artist.replace(";", ",").trim() else artist.trim()
 
         coroutineScope {
             val jobs = mutableListOf<Deferred<List<LyricsSearchResultItem>>>()
@@ -300,7 +317,7 @@ object LocalLyricsManager {
 
             if (LyricsSource.MEGALOBIZ in providers) {
                 jobs += async {
-                    val lines = runCatching { Megalobiz.lyrics(title, artist) }.getOrNull()
+                    val lines = runCatching { Megalobiz.lyrics(title, primaryArtist.ifBlank { normalizedArtist }) }.getOrNull()
                     if (!lines.isNullOrEmpty()) {
                         listOf(
                             LyricsSearchResultItem(
@@ -320,7 +337,10 @@ object LocalLyricsManager {
 
             if (LyricsSource.KUGOU in providers) {
                 jobs += async {
-                    val lines = runCatching { KuGou.lyrics(title, artist, durationMs, album) }.getOrNull()
+                    val lines = runCatching { KuGou.lyrics(title, normalizedArtist, durationMs, album) }.getOrNull()
+                        ?: if (primaryArtist.isNotBlank() && !primaryArtist.equals(normalizedArtist, ignoreCase = true)) {
+                            runCatching { KuGou.lyrics(title, primaryArtist, durationMs, album) }.getOrNull()
+                        } else null
                     if (!lines.isNullOrEmpty()) {
                         listOf(
                             LyricsSearchResultItem(
@@ -407,6 +427,18 @@ object LocalLyricsManager {
     }
 
     private fun searchLrcLib(title: String, artist: String, album: String?): List<LyricsSearchResultItem> {
+        val primaryArtist = cleanArtistForSearch(artist)
+        val normalizedArtist = if (artist.contains(";")) artist.replace(";", ",").trim() else artist.trim()
+        val direct = executeLrcLibSearch(title, normalizedArtist, album)
+        if (direct.isNotEmpty()) return direct
+
+        if (primaryArtist.isNotBlank() && !primaryArtist.equals(normalizedArtist, ignoreCase = true)) {
+            return executeLrcLibSearch(title, primaryArtist, album)
+        }
+        return emptyList()
+    }
+
+    private fun executeLrcLibSearch(title: String, artist: String, album: String?): List<LyricsSearchResultItem> {
         return runCatching {
             val builder = "https://lrclib.net/api/search".toHttpUrl().newBuilder()
             if (title.isNotBlank()) builder.addQueryParameter("track_name", title.trim())

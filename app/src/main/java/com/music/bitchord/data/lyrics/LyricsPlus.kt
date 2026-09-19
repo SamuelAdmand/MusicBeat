@@ -40,6 +40,22 @@ object LyricsPlus {
         artist: String,
         durationMs: Long,
         album: String? = null,
+    ): List<LyricLine>? {
+        val result = queryMirrors(title, artist, durationMs, album)
+        if (!result.isNullOrEmpty()) return result
+
+        val cleanArtist = cleanArtistForSearch(artist)
+        if (cleanArtist.isNotBlank() && !cleanArtist.equals(artist.trim(), ignoreCase = true)) {
+            return queryMirrors(title, cleanArtist, durationMs, album)
+        }
+        return null
+    }
+
+    private suspend fun queryMirrors(
+        title: String,
+        artist: String,
+        durationMs: Long,
+        album: String? = null,
     ): List<LyricLine>? = coroutineScope {
         val hosts = lastGood.get()
             ?.let { listOf(it) + MIRRORS.filterNot { mirror -> mirror == it } }
