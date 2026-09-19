@@ -259,9 +259,9 @@ fun LyricsEditorScreen(
             initialArtist = song.artist,
             initialAlbum = song.albumName,
             onDismissRequest = { showDownloadDialog = false },
-            onAutoDownloadClick = { title, artist, album ->
+            onAutoDownloadClick = { title, artist, album, providers ->
                 showDownloadDialog = false
-                viewModel.autoDownload(title, artist, album)
+                viewModel.autoDownload(title, artist, album, providers)
             },
             onSearchAllClick = { title, artist, album, providers ->
                 showDownloadDialog = false

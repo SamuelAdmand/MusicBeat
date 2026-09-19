@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.feature.lyricseditor.data.LocalLyricsManager
 import com.music.bitchord.feature.lyricseditor.domain.model.LyricsEditorSource
 import com.music.bitchord.feature.lyricseditor.domain.model.LyricsSearchResultItem
@@ -86,13 +87,20 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
         editedLyricsMap[_selectedSource.value] = original
     }
 
-    fun autoDownload(title: String, artist: String, album: String? = null) {
+    fun autoDownload(
+        title: String,
+        artist: String,
+        album: String? = null,
+        providers: Set<LyricsSource>? = null,
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
-            val result = LocalLyricsManager.downloadFromLrcLib(
+            val sources = providers ?: AppSettings.lyricsSources.value
+            val result = LocalLyricsManager.autoDownload(
                 title = title,
                 artist = artist,
                 album = album,
+                sources = sources,
             )
             _isLoading.value = false
 

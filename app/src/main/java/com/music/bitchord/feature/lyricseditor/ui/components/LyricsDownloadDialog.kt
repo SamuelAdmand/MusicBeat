@@ -31,7 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.data.lyrics.LyricsSource
+import com.music.bitchord.data.settings.AppSettings
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -40,7 +42,7 @@ fun LyricsDownloadDialog(
     initialArtist: String,
     initialAlbum: String? = null,
     onDismissRequest: () -> Unit,
-    onAutoDownloadClick: (title: String, artist: String, album: String?) -> Unit,
+    onAutoDownloadClick: (title: String, artist: String, album: String?, providers: Set<LyricsSource>) -> Unit,
     onSearchAllClick: (title: String, artist: String, album: String?, providers: Set<LyricsSource>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -48,19 +50,17 @@ fun LyricsDownloadDialog(
     var artist by remember { mutableStateOf(initialArtist) }
     var album by remember { mutableStateOf(initialAlbum.orEmpty()) }
 
-    val availableProviders = remember {
-        listOf(
-            LyricsSource.LRCLIB,
-            LyricsSource.BETTER_LYRICS,
-            LyricsSource.KUGOU,
-            LyricsSource.MUSIXMATCH,
-            LyricsSource.GENIUS,
-        )
+    val orderedSources by AppSettings.lyricsSourceOrder.collectAsStateWithLifecycle()
+    val enabledSources by AppSettings.lyricsSources.collectAsStateWithLifecycle()
+
+    val availableProviders = remember(orderedSources) {
+        orderedSources.ifEmpty { LyricsSource.entries }
     }
 
-    val selectedProviders = remember {
+    val selectedProviders = remember(availableProviders, enabledSources) {
+        val initial = availableProviders.filter { it in enabledSources }
         mutableStateListOf<LyricsSource>().apply {
-            addAll(availableProviders)
+            addAll(if (initial.isNotEmpty()) initial else availableProviders)
         }
     }
 
@@ -154,9 +154,10 @@ fun LyricsDownloadDialog(
                             title.trim(),
                             artist.trim(),
                             album.trim().ifEmpty { null },
+                            selectedProviders.toSet(),
                         )
                     },
-                    enabled = canSearch,
+                    enabled = canSearch && selectedProviders.isNotEmpty(),
                 ) {
                     Text("Auto")
                 }
