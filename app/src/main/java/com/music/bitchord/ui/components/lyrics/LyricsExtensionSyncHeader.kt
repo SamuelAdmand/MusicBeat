@@ -96,24 +96,26 @@ fun LyricsExtensionSyncHeader(
                     )
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.secondaryContainer)
-                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                            .padding(horizontal = 6.dp, vertical = 1.5.dp),
                     ) {
                         Text(
-                            text = "$extensionCount installed",
+                            text = "$extensionCount",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
                             ),
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            maxLines = 1,
+                            softWrap = false,
                         )
                     }
                 }
 
                 Text(
                     text = if (isSyncing) (syncMessage ?: "Syncing from GitHub...")
-                    else (syncMessage ?: "Auto-updates enabled"),
+                    else (syncMessage ?: "$extensionCount extension(s) loaded"),
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontSize = 11.sp,
                     ),
