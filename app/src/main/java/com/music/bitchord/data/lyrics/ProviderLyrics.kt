@@ -11,6 +11,11 @@ internal object ProviderLyrics {
 
     fun parse(raw: String): List<LyricLine>? {
         val content = unescapeTtml(unwrap(raw) ?: return null)
+        if (content.contains("Wob gopini", ignoreCase = true) ||
+            content.contains("Tefe woxica", ignoreCase = true) ||
+            content.contains("Gogoh vudob", ignoreCase = true)) {
+            return null
+        }
         val lines = when {
             content.contains(Regex("""<tt(?:\s|>)""", RegexOption.IGNORE_CASE)) ||
                 content.contains("http://www.w3.org/ns/ttml", ignoreCase = true) -> TtmlLyrics.parse(content)

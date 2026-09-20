@@ -40,6 +40,8 @@ object LyricsExtensionExecutor {
             .build()
     }
 
+    private val activeDeferreds = ConcurrentHashMap<String, kotlinx.coroutines.CompletableDeferred<String?>>()
+
     private fun getLock(extensionId: String): Mutex =
         engineLocks.computeIfAbsent(extensionId) { Mutex() }
 
@@ -79,29 +81,36 @@ object LyricsExtensionExecutor {
 
                     LyricsLog.i(extensionId, "getLyrics query: title='$title', artist='$artist'")
 
-                    qjs.evaluate<String>(
-                        """
-                        var __lyrics_result = undefined;
-                        (async function() {
-                            try {
-                                if (module.exports && typeof module.exports.getLyrics === 'function') {
-                                    var r = await module.exports.getLyrics($trackJson);
-                                    __lyrics_result = (r !== undefined && r !== null) ? String(r) : 'null';
-                                } else {
-                                    console.warn('[LyricsExt] getLyrics not found on module.exports');
-                                    __lyrics_result = 'null';
-                                }
-                            } catch(e) {
-                                console.error('[LyricsExt Error] ' + (e && e.message ? e.message : String(e)));
-                                __lyrics_result = 'null';
-                            }
-                        })();
-                        """.trimIndent()
-                    )
+                    val deferred = kotlinx.coroutines.CompletableDeferred<String?>()
+                    activeDeferreds[extensionId] = deferred
 
-                    val result = qjs.evaluate<String>("__lyrics_result || 'null'")
-                    LyricsLog.i(extensionId, "getLyrics result: ${result.take(100)}")
-                    if (result == "null" || result.isBlank()) null else result
+                    try {
+                        qjs.evaluate<String>(
+                            """
+                            (async function() {
+                                try {
+                                    if (module.exports && typeof module.exports.getLyrics === 'function') {
+                                        var r = await module.exports.getLyrics($trackJson);
+                                        __native_bridge.sendResult((r !== undefined && r !== null) ? String(r) : 'null');
+                                    } else {
+                                        console.warn('[LyricsExt] getLyrics not found on module.exports');
+                                        __native_bridge.sendResult('null');
+                                    }
+                                } catch(e) {
+                                    console.error('[LyricsExt Error] ' + (e && e.message ? e.message : String(e)));
+                                    __native_bridge.sendResult('null');
+                                }
+                            })();
+                            'ok';
+                            """.trimIndent()
+                        )
+
+                        val result = deferred.await()
+                        LyricsLog.i(extensionId, "getLyrics result: ${result?.take(100)}")
+                        if (result == "null" || result.isNullOrBlank()) null else result
+                    } finally {
+                        activeDeferreds.remove(extensionId)
+                    }
                 } catch (e: Throwable) {
                     LyricsLog.w(extensionId, "Execution failed: ${e.message}")
                     null
@@ -133,29 +142,36 @@ object LyricsExtensionExecutor {
 
                     LyricsLog.i(extensionId, "searchLyrics query: title='$title', artist='$artist'")
 
-                    qjs.evaluate<String>(
-                        """
-                        var __search_result = undefined;
-                        (async function() {
-                            try {
-                                if (module.exports && typeof module.exports.searchLyrics === 'function') {
-                                    var r = await module.exports.searchLyrics($queryJson);
-                                    __search_result = JSON.stringify(r);
-                                } else {
-                                    console.warn('[LyricsExt] searchLyrics not found on module.exports');
-                                    __search_result = '[]';
-                                }
-                            } catch(e) {
-                                console.error('[LyricsExt search error] ' + (e && e.message ? e.message : String(e)));
-                                __search_result = '[]';
-                            }
-                        })();
-                        """.trimIndent()
-                    )
+                    val deferred = kotlinx.coroutines.CompletableDeferred<String?>()
+                    activeDeferreds[extensionId] = deferred
 
-                    val result = qjs.evaluate<String>("__search_result || '[]'")
-                    LyricsLog.i(extensionId, "searchLyrics result: ${result.take(200)}")
-                    if (result == "[]" || result.isBlank()) null else result
+                    try {
+                        qjs.evaluate<String>(
+                            """
+                            (async function() {
+                                try {
+                                    if (module.exports && typeof module.exports.searchLyrics === 'function') {
+                                        var r = await module.exports.searchLyrics($queryJson);
+                                        __native_bridge.sendResult((r !== undefined && r !== null) ? JSON.stringify(r) : '[]');
+                                    } else {
+                                        console.warn('[LyricsExt] searchLyrics not found on module.exports');
+                                        __native_bridge.sendResult('[]');
+                                    }
+                                } catch(e) {
+                                    console.error('[LyricsExt search error] ' + (e && e.message ? e.message : String(e)));
+                                    __native_bridge.sendResult('[]');
+                                }
+                            })();
+                            'ok';
+                            """.trimIndent()
+                        )
+
+                        val result = deferred.await()
+                        LyricsLog.i(extensionId, "searchLyrics result: ${result?.take(200)}")
+                        if (result == "[]" || result.isNullOrBlank()) null else result
+                    } finally {
+                        activeDeferreds.remove(extensionId)
+                    }
                 } catch (e: Throwable) {
                     LyricsLog.e(extensionId, "searchLyrics exception: ${e.message}")
                     null
@@ -197,16 +213,23 @@ object LyricsExtensionExecutor {
             bindConsole(qjs, extensionId)
             bindHttp(qjs)
             bindBase64(qjs)
+            bindBridge(qjs, extensionId)
 
             // Setup CommonJS module environment
             qjs.evaluate<String>(
                 """
                 var module = { exports: {} };
                 var exports = module.exports;
+                'ok';
                 """.trimIndent()
             )
 
-            qjs.evaluate<String>(code)
+            qjs.evaluate<String>(
+                """
+                $code
+                ; 'ok';
+                """.trimIndent()
+            )
             engineMap[extensionId] = qjs
             return qjs
         } catch (e: Throwable) {
@@ -241,6 +264,17 @@ object LyricsExtensionExecutor {
         }
     }
 
+    private fun bindBridge(qjs: QuickJs, extensionId: String) {
+        qjs.define("__native_bridge") {
+            function("sendResult", object : FunctionBinding<Unit> {
+                override fun invoke(args: Array<Any?>) {
+                    val result = args.firstOrNull()?.toString()
+                    activeDeferreds[extensionId]?.complete(result)
+                }
+            })
+        }
+    }
+
     private suspend fun bindBase64(qjs: QuickJs) {
         qjs.define("__base64") {
             function("atob", object : FunctionBinding<String> {
@@ -261,10 +295,11 @@ object LyricsExtensionExecutor {
             })
         }
 
-        qjs.evaluate<Unit>(
+        qjs.evaluate<String>(
             """
             var atob = function(str) { return __base64.atob(str); };
             var btoa = function(str) { return __base64.btoa(str); };
+            'ok';
             """.trimIndent()
         )
     }
@@ -297,7 +332,7 @@ object LyricsExtensionExecutor {
         }
 
         // Polyfill standard fetch() over __native_lyrics.fetch
-        qjs.evaluate<Unit>(
+        qjs.evaluate<String>(
             """
             var fetch = async function(url, options) {
                 var method = 'GET';
@@ -335,6 +370,7 @@ object LyricsExtensionExecutor {
                 return 0;
             };
             var clearTimeout = function(id) {};
+            'ok';
             """.trimIndent()
         )
     }

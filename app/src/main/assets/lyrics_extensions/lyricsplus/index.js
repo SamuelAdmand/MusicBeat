@@ -1,6 +1,6 @@
 var MIRRORS = [
-  "https://lyricsplus.prjktla.workers.dev",
   "https://lyricsplus.binimum.org",
+  "https://lyricsplus.prjktla.workers.dev",
   "https://lyricsplus.prjktla.my.id",
   "https://lyricsplus.atomix.one"
 ];
@@ -34,6 +34,21 @@ module.exports = {
       } catch (e) {}
     }
     return null;
+  },
+
+  searchLyrics: async function(query) {
+    var lrc = await module.exports.getLyrics(query);
+    if (!lrc) return [];
+    return [{
+      id: "lyricsplus_" + encodeURIComponent((query.title || "").trim()),
+      title: query.title || "",
+      artist: query.artist || "",
+      album: query.album || "",
+      durationSeconds: Math.floor((query.durationMs || 0) / 1000),
+      provider: "LyricsPlus",
+      syncedLyrics: lrc,
+      plainLyrics: null
+    }];
   }
 };
 

@@ -1,5 +1,7 @@
 package com.music.bitchord.data.lyrics
 
+import android.util.Log
+import com.music.bitchord.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +49,15 @@ object LyricsLog {
 
     @Synchronized
     fun log(tag: String, message: String, level: Level = Level.INFO) {
+        if (BuildConfig.DEBUG) {
+            val logcatTag = "LyricsLog/$tag"
+            when (level) {
+                Level.INFO -> Log.i(logcatTag, message)
+                Level.SUCCESS -> Log.i(logcatTag, message)
+                Level.WARN -> Log.w(logcatTag, message)
+                Level.ERROR -> Log.e(logcatTag, message)
+            }
+        }
         val entry = Entry(tag = tag, message = message, level = level)
         val current = _entries.value
         _entries.value = if (current.size >= MAX_ENTRIES) {

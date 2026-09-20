@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": "2026-09-20T11:00:00Z",
+  "updated_at": "2026-09-20T14:00:00Z",
   "extensions": [
     {
       "id": "lrclib",
@@ -16,7 +16,7 @@
     {
       "id": "apple_music",
       "name": "Apple Music",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "description": "Word-by-word synced lyrics (via proxy)",
       "author": "SpotiFLAC / MusicBeat",
       "wordSynced": true,
@@ -27,7 +27,7 @@
     {
       "id": "lyricsplus",
       "name": "LyricsPlus",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Word-by-word karaoke lyrics (Apple/Musixmatch/Spotify/QQ, via proxy)",
       "author": "SpotiFLAC / MusicBeat",
       "wordSynced": true,
@@ -36,70 +36,15 @@
       "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/lyricsplus/index.js"
     },
     {
-      "id": "netease",
-      "name": "Netease",
-      "version": "1.0.0",
-      "description": "NetEase Cloud Music (good for Asian songs)",
-      "author": "SpotiFLAC / MusicBeat",
-      "wordSynced": false,
-      "defaultPriority": 4,
-      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/netease/manifest.json",
-      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/netease/index.js"
-    },
-    {
-      "id": "musixmatch",
-      "name": "Musixmatch",
-      "version": "1.0.0",
-      "description": "Largest lyrics database (multi-language)",
-      "author": "SpotiFLAC / MusicBeat",
-      "wordSynced": false,
-      "defaultPriority": 5,
-      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/musixmatch/manifest.json",
-      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/musixmatch/index.js"
-    },
-    {
-      "id": "qqmusic",
-      "name": "QQ Music",
-      "version": "1.0.0",
-      "description": "QQ Music (good for Chinese songs, direct API)",
-      "author": "SpotiFLAC / MusicBeat",
-      "wordSynced": false,
-      "defaultPriority": 6,
-      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/qqmusic/manifest.json",
-      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/qqmusic/index.js"
-    },
-    {
       "id": "kugou",
       "name": "KuGou",
       "version": "1.0.0",
       "description": "Direct Kugou synced lyrics",
       "author": "SpotiFLAC / MusicBeat",
       "wordSynced": false,
-      "defaultPriority": 7,
+      "defaultPriority": 4,
       "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/kugou/manifest.json",
       "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/kugou/index.js"
-    },
-    {
-      "id": "genius",
-      "name": "Genius",
-      "version": "1.0.0",
-      "description": "Direct Genius lyrics",
-      "author": "SpotiFLAC / MusicBeat",
-      "wordSynced": false,
-      "defaultPriority": 8,
-      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/genius/manifest.json",
-      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/genius/index.js"
-    },
-    {
-      "id": "simp-music",
-      "name": "SimpMusic",
-      "version": "1.0.0",
-      "description": "VideoId-matched line and word-synced lyrics",
-      "author": "SpotiFLAC / MusicBeat",
-      "wordSynced": true,
-      "defaultPriority": 9,
-      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/simp-music/manifest.json",
-      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/simp-music/index.js"
     }
   ]
 }

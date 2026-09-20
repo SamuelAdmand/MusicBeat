@@ -13,20 +13,31 @@ module.exports = {
   getLyrics: async function(track) {
     if (!track || !track.title) return null;
     var title = cleanTitle(track.title);
-    var artist = cleanArtist(track.artist || "");
+    var rawArtist = (track.artist || "").trim();
+    var artist = cleanArtist(rawArtist);
     var durationMs = track.durationMs || 0;
 
     try {
       console.log('[AppleMusic] getLyrics: title=' + title + ', artist=' + artist);
       var token = getToken();
-      var songs = await searchAppleMusic(token, title, artist);
+      // Try with full artist name first (matches SpotiFLAC-Mobile), then fallback to clean primary artist
+      var songs = await searchAppleMusic(token, title, rawArtist);
 
       // 401 = token expired, try dynamic refresh
       if (songs === null) {
         token = await refreshToken();
         if (!token) return null;
+        songs = await searchAppleMusic(token, title, rawArtist);
+      }
+
+      if ((!songs || songs.length === 0) && artist && artist !== rawArtist) {
         songs = await searchAppleMusic(token, title, artist);
       }
+
+      if (!songs || songs.length === 0) {
+        songs = await searchAppleMusic(token, title, "");
+      }
+
       if (!songs || songs.length === 0) return null;
 
       var bestSong = selectBestSong(songs, title, artist, durationMs);
@@ -43,19 +54,29 @@ module.exports = {
   searchLyrics: async function(query) {
     if (!query || !query.title) return [];
     var title = cleanTitle(query.title);
-    var artist = cleanArtist(query.artist || "");
+    var rawArtist = (query.artist || "").trim();
+    var artist = cleanArtist(rawArtist);
     var durationMs = query.durationMs || 0;
     console.log('[AppleMusic] searchLyrics: title=' + title + ', artist=' + artist);
 
     try {
       var token = getToken();
-      var songs = await searchAppleMusic(token, title, artist);
+      var songs = await searchAppleMusic(token, title, rawArtist);
 
       if (songs === null) {
         token = await refreshToken();
         if (!token) return [];
+        songs = await searchAppleMusic(token, title, rawArtist);
+      }
+
+      if ((!songs || songs.length === 0) && artist && artist !== rawArtist) {
         songs = await searchAppleMusic(token, title, artist);
       }
+
+      if (!songs || songs.length === 0) {
+        songs = await searchAppleMusic(token, title, "");
+      }
+
       if (!songs || songs.length === 0) {
         console.log('[AppleMusic] searchLyrics: no songs found in Apple catalog');
         return [];

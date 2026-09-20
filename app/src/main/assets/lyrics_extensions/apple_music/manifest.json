@@ -1,7 +1,7 @@
 {
   "id": "apple_music",
   "name": "Apple Music",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Word-by-word synced lyrics (via proxy)",
   "author": "SpotiFLAC / MusicBeat",
   "entrypoint": "index.js",

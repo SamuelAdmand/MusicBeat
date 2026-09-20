@@ -78,6 +78,14 @@ object LyricsExtensionManager {
             } else {
                 assetManager.list(ASSETS_DIR)?.filter { it != "registry.json" && it != "README.md" && !it.contains(".") }?.toTypedArray() ?: emptyArray()
             }
+            val bundledSet = bundledDirs.toSet()
+
+            // Prune extensions on disk that are no longer bundled
+            extDir.listFiles()?.filter { it.isDirectory && it.name !in bundledSet }?.forEach { staleDir ->
+                LyricsLog.w(TAG, "Pruning removed extension from disk: ${staleDir.name}")
+                LyricsExtensionExecutor.unload(staleDir.name)
+                staleDir.deleteRecursively()
+            }
 
             for (extName in bundledDirs) {
                 val targetDir = File(extDir, extName)
@@ -103,7 +111,7 @@ object LyricsExtensionManager {
 
                 val shouldOverwrite = !manifestFile.exists()
                     || !scriptFile.exists()
-                    || (bundledVersion != null && (installedVersion == null || isNewerVersion(bundledVersion, installedVersion)))
+                    || (bundledVersion != null && (installedVersion == null || isNewerVersion(bundledVersion, installedVersion) || bundledVersion != installedVersion))
 
                 if (shouldOverwrite) {
                     runCatching {
@@ -190,7 +198,7 @@ object LyricsExtensionManager {
             }
 
             LyricsLog.i(TAG, "Fetching registry from $repoUrl")
-            val request = Request.Builder().url(repoUrl).build()
+            val request = Request.Builder().url(repoUrl).cacheControl(okhttp3.CacheControl.FORCE_NETWORK).build()
             val registryJson = Http.client.newCall(request).execute().use { resp ->
                 if (!resp.isSuccessful) throw Exception("HTTP ${resp.code} fetching registry")
                 resp.body?.string() ?: throw Exception("Empty registry response")
@@ -211,10 +219,10 @@ object LyricsExtensionManager {
 
             var updatedCount = 0
 
-            // 2. Download and update extensions
             for (remoteItem in remoteRegistry.extensions) {
                 val current = currentMap[remoteItem.id]
-                val needsUpdate = force || current == null || isNewerVersion(remoteItem.version, current.version)
+                val isRemoteOlder = current != null && isNewerVersion(current.version, remoteItem.version)
+                val needsUpdate = !isRemoteOlder && (force || current == null || isNewerVersion(remoteItem.version, current.version))
 
                 if (needsUpdate) {
                     _syncMessage.value = "Updating ${remoteItem.name} (${remoteItem.version})..."
@@ -254,7 +262,7 @@ object LyricsExtensionManager {
     }
 
     private fun downloadString(url: String): String? = runCatching {
-        val req = Request.Builder().url(url).build()
+        val req = Request.Builder().url(url).cacheControl(okhttp3.CacheControl.FORCE_NETWORK).build()
         Http.client.newCall(req).execute().use { resp ->
             if (resp.isSuccessful) resp.body?.string() else null
         }

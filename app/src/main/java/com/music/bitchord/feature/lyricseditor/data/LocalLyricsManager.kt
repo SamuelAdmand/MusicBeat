@@ -313,6 +313,9 @@ object LocalLyricsManager {
             val synced = obj["syncedLyrics"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
             val plain = obj["plainLyrics"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
             if (synced == null && plain == null) return@mapNotNull null
+            if (synced?.contains("Wob gopini", ignoreCase = true) == true || plain?.contains("Wob gopini", ignoreCase = true) == true) {
+                return@mapNotNull null
+            }
 
             LyricsSearchResultItem(
                 id = id,
