@@ -1078,6 +1078,7 @@ class PlaybackService : MediaLibraryService() {
         )
             .setId(SESSION_ID)
             .setSessionActivity(sessionActivity())
+            .setBitmapLoader(CoilBitmapLoader(this, scope))
             .build()
         mediaSession?.setCustomLayout(notificationButtons())
     }

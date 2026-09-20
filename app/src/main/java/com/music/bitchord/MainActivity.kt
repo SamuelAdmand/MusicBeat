@@ -73,6 +73,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import kotlinx.coroutines.Job
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Folder
@@ -89,6 +90,7 @@ import com.music.bitchord.ui.screens.LOCAL_TAB_PLAYLISTS
 import com.music.bitchord.feature.localsearch.ui.LocalSearchScreen
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -446,6 +448,8 @@ private fun BitChordApp(
     var searchFocusTrigger by remember { mutableIntStateOf(0) }
     // Invalidates an in-flight radio lookup when a later play request wins.
     var playRequestGeneration by remember { mutableIntStateOf(0) }
+    // Single-flight playback job to cancel previous in-flight requests on rapid taps
+    var playJob by remember { mutableStateOf<Job?>(null) }
     // Starting radio from the item already playing must not replace that media
     // item just to add UI metadata. This temporary label covers that seed; all
     // following radio items carry radioName in their MediaItem extras.
@@ -683,9 +687,10 @@ private fun BitChordApp(
     val scope = rememberCoroutineScope()
 
     val play: (List<Song>, Int) -> Unit = { songs, index ->
+        playJob?.cancel()
         playRequestGeneration++
         activeRadioSeed = null
-        scope.launch {
+        playJob = scope.launch {
             controller?.playSongs(songs, index)
             // Nothing to raise where the player is already open beside the page.
             if (!playerDocked) showNowPlaying = true
@@ -708,9 +713,10 @@ private fun BitChordApp(
      * where the surrounding list *is* the thing the user asked for.
      */
     val playRadio: (Song) -> Unit = { song ->
+        playJob?.cancel()
         playRequestGeneration++
         activeRadioSeed = null
-        scope.launch {
+        playJob = scope.launch {
             controller?.playSongs(listOf(song), 0)
             if (!playerDocked) showNowPlaying = true
         }
@@ -1454,7 +1460,10 @@ private fun BitChordApp(
                     // the duration, so a fraction dropped seconds after
                     // a transition would otherwise be scaled by the
                     // previous song's length.
-                    val duration = player.duration
+                    val duration = player.duration.takeIf { it > 0 }
+                        ?: player.currentMediaItem?.toSong()?.durationMillis()
+                        ?: playerSong?.durationMillis()
+                        ?: 0L
                     if (duration > 0) {
                         player.seekTo(
                             (fraction * duration).toLong()
@@ -2208,10 +2217,16 @@ private fun BitChordApp(
 
         // ---- Now Playing ----
         // Only raised where it isn't already open beside the page.
+        val nowPlayingSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        LaunchedEffect(showNowPlaying) {
+            if (showNowPlaying && nowPlayingSheetState.currentValue != SheetValue.Expanded) {
+                nowPlayingSheetState.show()
+            }
+        }
         if (!playerDocked && showNowPlaying && playerSong != null) {
             ModalBottomSheet(
                 onDismissRequest = { showNowPlaying = false },
-                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                sheetState = nowPlayingSheetState,
                 // The player fills the screen and paints its own background to
                 // the very top, so the sheet's default 28.dp top corners would
                 // only cut two notches out of the artwork behind the status bar.

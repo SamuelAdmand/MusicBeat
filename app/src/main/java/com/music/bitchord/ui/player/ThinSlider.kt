@@ -62,24 +62,29 @@ fun ThinSlider(
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
                     dragging = true
                     onValueChange((down.position.x / size.width).coerceIn(0f, 1f))
 
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val pointer = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if (!pointer.pressed) {
-                            pointer.consume()
-                            break
+                    try {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val pointer = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!pointer.pressed) {
+                                pointer.consume()
+                                break
+                            }
+                            if (pointer.positionChanged()) {
+                                onValueChange((pointer.position.x / size.width).coerceIn(0f, 1f))
+                                pointer.consume()
+                            }
                         }
-                        if (pointer.positionChanged()) {
-                            onValueChange((pointer.position.x / size.width).coerceIn(0f, 1f))
-                            pointer.consume()
+                    } finally {
+                        if (dragging) {
+                            dragging = false
+                            onValueChangeFinished?.invoke()
                         }
                     }
-
-                    dragging = false
-                    onValueChangeFinished?.invoke()
                 }
             },
         contentAlignment = Alignment.Center,

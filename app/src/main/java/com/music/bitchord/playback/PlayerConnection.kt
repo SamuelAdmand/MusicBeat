@@ -27,10 +27,17 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.sources.SourceRegistry
 import com.music.bitchord.data.sources.TrackMatcher
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.media3.common.Timeline
 import com.music.bitchord.download.Downloads
 import com.music.bitchord.ui.rememberIsForeground
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.await
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
@@ -154,6 +161,7 @@ suspend fun MediaController.commitRadioQueue() {
 fun rememberPlayerState(controller: MediaController?): PlayerState {
     val position = remember { PlaybackPosition() }
     var state by remember { mutableStateOf(PlayerState(position = position)) }
+    val scope = rememberCoroutineScope()
 
     DisposableEffect(controller) {
         val player = controller ?: return@DisposableEffect onDispose {}
@@ -163,6 +171,7 @@ fun rememberPlayerState(controller: MediaController?): PlayerState {
         // buffering, repeat and metadata events do not require another O(n)
         // walk over a large playlist.
         var queueSnapshot = emptyList<Song>()
+        var queueRebuildJob: Job? = null
 
         fun sync(
             error: String? = null,
@@ -170,13 +179,34 @@ fun rememberPlayerState(controller: MediaController?): PlayerState {
             refreshCurrentQueueItem: Boolean = false,
         ) {
             val item = player.currentMediaItem
+            val count = player.mediaItemCount
+            val currentIndex = player.currentMediaItemIndex
+
             if (rebuildQueue) {
-                queueSnapshot = (0 until player.mediaItemCount)
-                    .map { player.getMediaItemAt(it).toSong() }
+                queueRebuildJob?.cancel()
+                if (count <= 50) {
+                    queueSnapshot = (0 until count).map { player.getMediaItemAt(it).toSong() }
+                } else {
+                    // Fast window for immediate UI responsiveness without main-thread blocking
+                    val immediateCount = minOf(50, count)
+                    queueSnapshot = (0 until immediateCount).map { player.getMediaItemAt(it).toSong() }
+                    val timeline = player.currentTimeline
+                    if (!timeline.isEmpty) {
+                        queueRebuildJob = scope.launch(Dispatchers.Default) {
+                            val window = Timeline.Window()
+                            val fullQueue = (0 until timeline.windowCount).map { i ->
+                                timeline.getWindow(i, window).mediaItem.toSong()
+                            }
+                            withContext(Dispatchers.Main) {
+                                queueSnapshot = fullQueue
+                                state = state.copy(queue = fullQueue)
+                            }
+                        }
+                    }
+                }
             } else if (refreshCurrentQueueItem && item != null) {
-                val index = player.currentMediaItemIndex
-                if (index in queueSnapshot.indices) {
-                    queueSnapshot = queueSnapshot.toMutableList().also { it[index] = item.toSong() }
+                if (currentIndex in queueSnapshot.indices) {
+                    queueSnapshot = queueSnapshot.toMutableList().also { it[currentIndex] = item.toSong() }
                 }
             }
             // Synced here too, so seeking while paused or buffering still moves
@@ -190,7 +220,7 @@ fun rememberPlayerState(controller: MediaController?): PlayerState {
                 isLoading = player.playbackState == Player.STATE_BUFFERING,
                 repeatMode = player.repeatMode,
                 queue = queueSnapshot,
-                queueIndex = player.currentMediaItemIndex,
+                queueIndex = currentIndex,
                 hasPrevious = player.hasPreviousMediaItem(),
                 hasNext = player.hasNextMediaItem(),
                 isQualityUpgraded = item?.mediaMetadata?.extras
@@ -210,7 +240,10 @@ fun rememberPlayerState(controller: MediaController?): PlayerState {
         }
         player.addListener(listener)
         sync(rebuildQueue = true)
-        onDispose { player.removeListener(listener) }
+        onDispose {
+            queueRebuildJob?.cancel()
+            player.removeListener(listener)
+        }
     }
 
     // Only while the app is on screen. The poll exists to move a scrubber, and
@@ -288,10 +321,10 @@ private const val EXTRA_ALBUM_ID = "bitchord.albumId"
 private const val EXTRA_SET_VIDEO_ID = "bitchord.setVideoId"
 
 /** @see Song.localUri */
-private const val EXTRA_LOCAL_URI = "bitchord.localUri"
+internal const val EXTRA_LOCAL_URI = "bitchord.localUri"
 
 /** @see Song.localPath */
-private const val EXTRA_LOCAL_PATH = "bitchord.localPath"
+internal const val EXTRA_LOCAL_PATH = "bitchord.localPath"
 
 /**
  * How long the track runs, as the row that queued it said.
@@ -458,7 +491,12 @@ fun Song.toMediaItem(): MediaItem {
             // Sized here rather than left as stored: this is what the lock
             // screen, the notification and Android Auto draw, all of them
             // large, and none of them go back for a better copy later.
-            .setArtworkUri(artworkAt(NOTIFICATION_ART_PX)?.toUri())
+            .setArtworkUri(
+                artworkAt(NOTIFICATION_ART_PX)?.toUri()
+                    ?: offlineUri?.toUri()
+                    ?: localPath?.let { Uri.fromFile(File(it)) }
+                    ?: videoId.takeIf { it.startsWith("content://") || it.startsWith("file://") }?.toUri(),
+            )
             // System media surfaces (One UI's Now Bar, Android Auto, Assistant)
             // classify a session by its media type; untyped sessions get treated
             // as generic audio and lose the music-specific card.
@@ -581,6 +619,8 @@ fun mediaIdIn(uri: Uri): String? = if (uri.authority == "source") {
     uri.getQueryParameter("v")
 }
 
+const val FAST_START_QUEUE_BATCH_SIZE = 50
+
 fun MediaController.playSongs(songs: List<Song>, startIndex: Int) {
     if (songs.isEmpty()) return
     // A queue started while shuffle is on goes in shuffled rather than being
@@ -592,7 +632,24 @@ fun MediaController.playSongs(songs: List<Song>, startIndex: Int) {
     } else {
         queueStartingAt(songs, startIndex)
     }
-    setMediaItems(queue.map { it.toMediaItem() }, 0, 0L)
+    if (queue.isEmpty()) return
+
+    // Fast-start: Send the initial batch immediately so playback starts with 0ms delay
+    val initialBatch = queue.take(FAST_START_QUEUE_BATCH_SIZE)
+    setMediaItems(initialBatch.map { it.toMediaItem() }, 0, 0L)
     prepare()
     play()
+
+    // Background-convert remaining MediaItems and append asynchronously without blocking UI or Binder IPC
+    if (queue.size > FAST_START_QUEUE_BATCH_SIZE) {
+        val remaining = queue.drop(FAST_START_QUEUE_BATCH_SIZE)
+        CoroutineScope(Dispatchers.Default).launch {
+            val remainingMediaItems = remaining.map { it.toMediaItem() }
+            withContext(Dispatchers.Main) {
+                runCatching {
+                    addMediaItems(remainingMediaItems)
+                }
+            }
+        }
+    }
 }

@@ -210,6 +210,7 @@ import com.music.bitchord.data.model.LikeStatus
 import com.music.bitchord.data.model.PLAYER_ART_PX
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
+import com.music.bitchord.data.model.durationMillis
 import com.music.bitchord.playback.BACK_RESTARTS_AFTER_MS
 import com.music.bitchord.playback.autoplaySectionStart
 import kotlinx.coroutines.launch
@@ -268,7 +269,7 @@ private const val SEEK_SETTLE_TOLERANCE_MS = 1_500L
  * long a seek that never settles can freeze the bar for. Generous enough that a
  * slow buffer still hands over smoothly rather than snapping back.
  */
-private const val SEEK_SETTLE_TIMEOUT_MS = 4_000L
+private const val SEEK_SETTLE_TIMEOUT_MS = 1_500L
 
 private val THUMB_SIZE = 54.dp
 private val HEADER_HEIGHT = 60.dp
@@ -896,7 +897,8 @@ fun NowPlayingScreen(
     // handle doesn't snap back and then jump forward once loading finishes.
     var pendingSeek by remember { mutableStateOf<Float?>(null) }
 
-    val fraction = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f
+    val effectiveDurationMs = if (durationMs > 0) durationMs else song.durationMillis()
+    val fraction = if (effectiveDurationMs > 0) positionMs.toFloat() / effectiveDurationMs else 0f
     val shown = when {
         scrubbing -> scrubValue
         pendingSeek != null -> pendingSeek!!
@@ -918,9 +920,9 @@ fun NowPlayingScreen(
     // Tolerance is absolute rather than a share of the duration: two percent is
     // a quarter-second on a jingle and twelve seconds on a long mix, and it is
     // the wall-clock gap that decides whether the handle appears to jump.
-    LaunchedEffect(positionMs, durationMs, pendingSeek) {
+    LaunchedEffect(positionMs, effectiveDurationMs, pendingSeek) {
         val target = pendingSeek ?: return@LaunchedEffect
-        if (durationMs > 0 && abs(positionMs - (target * durationMs).toLong()) < SEEK_SETTLE_TOLERANCE_MS) {
+        if (effectiveDurationMs > 0 && abs(positionMs - (target * effectiveDurationMs).toLong()) < SEEK_SETTLE_TOLERANCE_MS) {
             pendingSeek = null
         }
     }
@@ -2178,12 +2180,12 @@ fun NowPlayingScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = formatTime((shown * durationMs).toLong()),
+                        text = formatTime((shown * effectiveDurationMs).toLong()),
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White.copy(alpha = 0.55f),
                     )
                     Text(
-                        text = "-" + formatTime(durationMs - (shown * durationMs).toLong()),
+                        text = "-" + formatTime(effectiveDurationMs - (shown * effectiveDurationMs).toLong()),
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White.copy(alpha = 0.55f),
                     )
