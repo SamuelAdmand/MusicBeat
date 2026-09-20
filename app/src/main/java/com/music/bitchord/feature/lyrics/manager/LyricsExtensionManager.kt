@@ -61,7 +61,9 @@ object LyricsExtensionManager {
     }
 
     /**
-     * Ensures all bundled extensions from assets exist in the internal storage directory.
+     * Ensures all bundled extensions from assets exist in the internal storage
+     * directory, and overwrites them when the bundled version is newer than
+     * what's currently installed (e.g. after an app update).
      */
     private suspend fun bootstrapBundledExtensions(context: Context) = withContext(Dispatchers.IO) {
         val rootDir = File(context.filesDir, EXTENSIONS_DIR)
@@ -85,20 +87,38 @@ object LyricsExtensionManager {
                 val scriptFile = File(targetDir, "index.js")
                 val assetPrefix = if (hasNestedExtensions) "$ASSETS_DIR/extensions/$extName" else "$ASSETS_DIR/$extName"
 
-                if (!manifestFile.exists()) {
+                // Read bundled manifest version to decide whether to overwrite
+                val bundledVersion = runCatching {
+                    assetManager.open("$assetPrefix/manifest.json").bufferedReader().use { reader ->
+                        val manifest = json.decodeFromString<LyricsExtensionManifest>(reader.readText())
+                        manifest.version
+                    }
+                }.getOrNull()
+
+                val installedVersion = if (manifestFile.exists()) {
+                    runCatching {
+                        json.decodeFromString<LyricsExtensionManifest>(manifestFile.readText()).version
+                    }.getOrNull()
+                } else null
+
+                val shouldOverwrite = !manifestFile.exists()
+                    || !scriptFile.exists()
+                    || (bundledVersion != null && (installedVersion == null || isNewerVersion(bundledVersion, installedVersion)))
+
+                if (shouldOverwrite) {
                     runCatching {
                         assetManager.open("$assetPrefix/manifest.json").use { input ->
                             manifestFile.outputStream().use { output -> input.copyTo(output) }
                         }
                     }
-                }
-
-                if (!scriptFile.exists()) {
                     runCatching {
                         assetManager.open("$assetPrefix/index.js").use { input ->
                             scriptFile.outputStream().use { output -> input.copyTo(output) }
                         }
                     }
+                    // Clear cached engine so the new script is loaded fresh
+                    LyricsExtensionExecutor.unload(extName)
+                    LyricsLog.i(TAG, "Bootstrapped $extName: ${installedVersion ?: "new"} -> ${bundledVersion ?: "?"}")
                 }
             }
         }.onFailure {
