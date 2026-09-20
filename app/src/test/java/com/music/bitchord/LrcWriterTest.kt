@@ -1,6 +1,6 @@
 package com.music.bitchord
 
-import com.music.bitchord.data.lyrics.LrcLib
+import com.music.bitchord.data.lyrics.LrcParser
 import com.music.bitchord.data.lyrics.LyricLine
 import com.music.bitchord.data.lyrics.LyricWord
 import com.music.bitchord.data.lyrics.toLrc
@@ -132,7 +132,7 @@ class LrcWriterTest {
             LyricLine(timeMs = 25_500L, text = "third line"),
         )
 
-        val reparsed = LrcLib.parseLrc(lines.toLrc())
+        val reparsed = LrcParser.parseLrc(lines.toLrc())
 
         assertEquals(lines.map { it.timeMs }, reparsed.map { it.timeMs })
         assertEquals(lines.map { it.text }, reparsed.map { it.text })

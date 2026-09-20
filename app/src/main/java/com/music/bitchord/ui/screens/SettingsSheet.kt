@@ -175,6 +175,7 @@ fun SettingsScreen(
     val syncedLyrics by AppSettings.syncedLyrics.collectAsStateWithLifecycle()
     val autoEmbedLyrics by AppSettings.autoEmbedLyrics.collectAsStateWithLifecycle()
     val lyricsSources by AppSettings.lyricsSources.collectAsStateWithLifecycle()
+    val lyricsSourceOrder by AppSettings.lyricsSourceOrder.collectAsStateWithLifecycle()
     val showLyricsLogs by AppSettings.showLyricsLogs.collectAsStateWithLifecycle()
     val theme by AppSettings.themeMode.collectAsStateWithLifecycle()
     val sessionId by AppSettings.audioSessionId.collectAsStateWithLifecycle()
@@ -627,8 +628,8 @@ fun SettingsScreen(
                 SettingsRow(
                     icon = Icons.Rounded.Language,
                     title = stringResource(R.string.lyrics_sources),
-                    subtitle = lyricsSources
-                        .sortedBy { it.ordinal }
+                    subtitle = lyricsSourceOrder
+                        .filter { it in lyricsSources }
                         .joinToString(", ") { it.label }
                         .ifEmpty { stringResource(R.string.no_lyrics_sources_enabled) },
                     trailing = { Chevron() },

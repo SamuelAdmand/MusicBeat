@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-20T00:00:00Z",
+  "extensions": [
+    {
+      "id": "betterlyrics",
+      "name": "BetterLyrics",
+      "version": "1.0.0",
+      "description": "Apple Music timings, word by word via BetterLyrics API.",
+      "author": "MusicBeat Community",
+      "wordSynced": true,
+      "defaultPriority": 1,
+      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/betterlyrics/manifest.json",
+      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/betterlyrics/index.js"
+    },
+    {
+      "id": "lyricsplus",
+      "name": "LyricsPlus",
+      "version": "1.0.0",
+      "description": "Syllable by syllable timings from community mirrors.",
+      "author": "MusicBeat Community",
+      "wordSynced": true,
+      "defaultPriority": 2,
+      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/lyricsplus/manifest.json",
+      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/lyricsplus/index.js"
+    },
+    {
+      "id": "paxsenix",
+      "name": "PaxSenix",
+      "version": "1.0.0",
+      "description": "Apple Music timings on a second independent host.",
+      "author": "MusicBeat Community",
+      "wordSynced": true,
+      "defaultPriority": 3,
+      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/paxsenix/manifest.json",
+      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/paxsenix/index.js"
+    },
+    {
+      "id": "lrclib",
+      "name": "LRCLIB",
+      "version": "1.0.0",
+      "description": "Free, open community lyrics database with line-synced LRC.",
+      "author": "MusicBeat Community",
+      "wordSynced": false,
+      "defaultPriority": 4,
+      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/lrclib/manifest.json",
+      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/lrclib/index.js"
+    },
+    {
+      "id": "kugou",
+      "name": "KuGou",
+      "version": "1.0.0",
+      "description": "Whole lines, strong outside the English catalogue.",
+      "author": "MusicBeat Community",
+      "wordSynced": false,
+      "defaultPriority": 5,
+      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/kugou/manifest.json",
+      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/kugou/index.js"
+    },
+    {
+      "id": "musixmatch",
+      "name": "Musixmatch",
+      "version": "1.0.0",
+      "description": "Whole lines from the world's largest lyrics catalogue.",
+      "author": "MusicBeat Community",
+      "wordSynced": false,
+      "defaultPriority": 6,
+      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/musixmatch/manifest.json",
+      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/musixmatch/index.js"
+    },
+    {
+      "id": "simp-music",
+      "name": "SimpMusic",
+      "version": "1.0.0",
+      "description": "Matched on video ID, so never the wrong edit.",
+      "author": "MusicBeat Community",
+      "wordSynced": true,
+      "defaultPriority": 7,
+      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/simp-music/manifest.json",
+      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/simp-music/index.js"
+    },
+    {
+      "id": "genius",
+      "name": "Genius",
+      "version": "1.0.0",
+      "description": "Massive web catalogue fallback for unsynced plain text lyrics.",
+      "author": "MusicBeat Community",
+      "wordSynced": false,
+      "defaultPriority": 8,
+      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/genius/manifest.json",
+      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/genius/index.js"
+    },
+    {
+      "id": "megalobiz",
+      "name": "Megalobiz",
+      "version": "1.0.0",
+      "description": "Community-made, whole-line LRC.",
+      "author": "MusicBeat Community",
+      "wordSynced": false,
+      "defaultPriority": 9,
+      "manifest_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/megalobiz/manifest.json",
+      "script_url": "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/extensions/megalobiz/index.js"
+    }
+  ]
+}

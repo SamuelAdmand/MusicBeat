@@ -54,7 +54,7 @@ fun LyricsDownloadDialog(
     val enabledSources by AppSettings.lyricsSources.collectAsStateWithLifecycle()
 
     val availableProviders = remember(orderedSources) {
-        orderedSources.ifEmpty { LyricsSource.entries }
+        orderedSources.ifEmpty { com.music.bitchord.feature.lyrics.manager.LyricsExtensionManager.dynamicSources.value }
     }
 
     val selectedProviders = remember(availableProviders, enabledSources) {

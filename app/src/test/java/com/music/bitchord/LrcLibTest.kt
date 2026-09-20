@@ -1,6 +1,6 @@
 package com.music.bitchord
 
-import com.music.bitchord.data.lyrics.LrcLib
+import com.music.bitchord.data.lyrics.LrcParser
 import com.music.bitchord.data.lyrics.LyricLine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -13,7 +13,7 @@ class LrcLibTest {
 
     @Test
     fun `parses centisecond stamps`() {
-        val lines = LrcLib.parseLrc(
+        val lines = LrcParser.parseLrc(
             """
             [00:32.07] first line
             [01:05.50] second line
@@ -27,13 +27,13 @@ class LrcLibTest {
 
     @Test
     fun `parses millisecond stamps`() {
-        val lines = LrcLib.parseLrc("[02:03.456] third line").filterNot { it.isGap }
+        val lines = LrcParser.parseLrc("[02:03.456] third line").filterNot { it.isGap }
         assertEquals(123_456L, lines.single().timeMs)
     }
 
     @Test
     fun `drops metadata tags and short gaps`() {
-        val lines = LrcLib.parseLrc(
+        val lines = LrcParser.parseLrc(
             """
             [ar:Arijit Singh]
             [ti:Zaalima]
@@ -49,7 +49,7 @@ class LrcLibTest {
 
     @Test
     fun `keeps long instrumental gaps`() {
-        val lines = LrcLib.parseLrc(
+        val lines = LrcParser.parseLrc(
             """
             [00:00.00] intro words
             [00:05.00]
@@ -63,7 +63,7 @@ class LrcLibTest {
 
     @Test
     fun `keeps a trailing gap as the outro`() {
-        val lines = LrcLib.parseLrc("[00:10.00] words\n[04:49.01] ")
+        val lines = LrcParser.parseLrc("[00:10.00] words\n[04:49.01] ")
         assertEquals(listOf("words"), lines.words())
         assertEquals(289_010L, lines.last().timeMs)
         assertTrue(lines.last().isGap)
@@ -71,7 +71,7 @@ class LrcLibTest {
 
     @Test
     fun `adds a leading gap for a long intro`() {
-        val lines = LrcLib.parseLrc("[00:32.07] first words")
+        val lines = LrcParser.parseLrc("[00:32.07] first words")
         assertEquals(2, lines.size)
         assertTrue(lines[0].isGap)
         assertEquals(0L, lines[0].timeMs)
@@ -80,14 +80,14 @@ class LrcLibTest {
 
     @Test
     fun `no leading gap when singing starts straight away`() {
-        val lines = LrcLib.parseLrc("[00:01.00] straight in")
+        val lines = LrcParser.parseLrc("[00:01.00] straight in")
         assertEquals(1, lines.size)
         assertEquals("straight in", lines.single().text)
     }
 
     @Test
     fun `sorts out of order stamps`() {
-        val lines = LrcLib.parseLrc("[00:30.00] later\n[00:10.00] earlier")
+        val lines = LrcParser.parseLrc("[00:30.00] later\n[00:10.00] earlier")
         assertEquals(listOf("earlier", "later"), lines.words())
         val sung = lines.filterNot { it.isGap }
         assertTrue(sung[0].timeMs < sung[1].timeMs)

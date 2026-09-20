@@ -31,6 +31,8 @@ import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +40,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
+import com.music.bitchord.feature.lyrics.manager.LyricsExtensionManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -96,7 +102,12 @@ fun LyricsSourcesDialog(
     val savedOrder by AppSettings.lyricsSourceOrder.collectAsStateWithLifecycle()
     val prioritizeSyllableSync by AppSettings.prioritizeSyllableSync.collectAsStateWithLifecycle()
     val paxSenixApiKey by AppSettings.paxSenixApiKey.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val isSyncing by LyricsExtensionManager.isSyncing.collectAsStateWithLifecycle()
+    val syncMessage by LyricsExtensionManager.syncMessage.collectAsStateWithLifecycle()
     var showPaxSenixKeyDialog by remember { mutableStateOf(false) }
+    var showRepoSettingsDialog by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(ALERT_CORNER)
 
     Box(
@@ -195,6 +206,20 @@ fun LyricsSourcesDialog(
                 onClick = { showPaxSenixKeyDialog = true },
             )
             AlertRule()
+            LyricsUpdateSourcesRow(
+                isSyncing = isSyncing,
+                syncMessage = syncMessage,
+                onClick = {
+                    scope.launch {
+                        LyricsExtensionManager.syncFromRepository(context, force = true)
+                    }
+                },
+            )
+            AlertRule()
+            LyricsExtensionRepoRow(
+                onClick = { showRepoSettingsDialog = true },
+            )
+            AlertRule()
             SyllableSyncToggle(
                 checked = prioritizeSyllableSync,
                 onToggle = { AppSettings.setPrioritizeSyllableSync(!prioritizeSyllableSync) },
@@ -209,6 +234,13 @@ fun LyricsSourcesDialog(
             AlertRule()
             AlertAction(label = stringResource(R.string.done), emphasised = true, onClick = onDismiss)
         }
+    }
+
+    if (showRepoSettingsDialog) {
+        LyricsRepoSettingsDialog(
+            hazeState = hazeState,
+            onDismiss = { showRepoSettingsDialog = false },
+        )
     }
 
     if (showPaxSenixKeyDialog) {
@@ -312,6 +344,105 @@ fun LyricsSourcesDialog(
                     Text(stringResource(R.string.cancel))
                 }
             },
+        )
+    }
+}
+
+@Composable
+private fun LyricsUpdateSourcesRow(
+    isSyncing: Boolean,
+    syncMessage: String?,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = ACTION_HEIGHT)
+            .background(
+                if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f) else Color.Transparent,
+            )
+            .clickable(
+                indication = null,
+                enabled = !isSyncing,
+                interactionSource = interactionSource,
+                onClick = onClick,
+            )
+            .padding(horizontal = 16.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = "Update Sources",
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = if (isSyncing) (syncMessage ?: "Syncing from GitHub...") else (syncMessage ?: "Check for extension updates from GitHub"),
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        if (isSyncing) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Rounded.Refresh,
+                contentDescription = "Update Sources",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LyricsExtensionRepoRow(
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = ACTION_HEIGHT)
+            .background(
+                if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f) else Color.Transparent,
+            )
+            .clickable(
+                indication = null,
+                interactionSource = interactionSource,
+                onClick = onClick,
+            )
+            .padding(horizontal = 16.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = "Extension Repository Settings",
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Configure GitHub repo URL & auto-update",
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Icon(
+            imageVector = Icons.Rounded.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+            modifier = Modifier.size(18.dp),
         )
     }
 }
@@ -591,14 +722,24 @@ private fun ReorderableSourceList(
                                 },
                         )
                         Column(Modifier.weight(1f)) {
-                            Text(
-                                text = source.label,
-                                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                                color = MaterialTheme.colorScheme.onSurface
-                                    .copy(alpha = if (toggleable) 1f else 0.5f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = source.label,
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                        .copy(alpha = if (toggleable) 1f else 0.5f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                val ext = com.music.bitchord.feature.lyrics.manager.LyricsExtensionManager.getExtension(source.extensionId)
+                                if (ext != null) {
+                                    Text(
+                                        text = "  v${ext.version}",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    )
+                                }
+                            }
                             Text(
                                 text = source.detail,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),

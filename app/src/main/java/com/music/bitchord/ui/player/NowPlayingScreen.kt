@@ -198,7 +198,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.data.NerdStats
 import com.music.bitchord.data.canvas.CanvasArtwork
 import com.music.bitchord.data.canvas.CanvasRepository
-import com.music.bitchord.data.lyrics.Genius
+import com.music.bitchord.data.lyrics.LrcParser
 import com.music.bitchord.data.lyrics.LyricLine
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.ui.components.LyricsLogConsole
@@ -2937,7 +2937,7 @@ private fun LyricsPanel(
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         itemsIndexed(lines) { index, line ->
-            if (!isSynced && Genius.isSectionHeader(line.text)) {
+            if (!isSynced && LrcParser.isSectionHeader(line.text)) {
                 val sectionTitle = line.text.removePrefix("[").removeSuffix("]").trim()
                 Column(
                     modifier = Modifier
@@ -3220,7 +3220,7 @@ private fun CurrentLyricLine(
     val isSynced = remember(lines) { lines.any { it.timeMs > 0L } }
     if (!isSynced) {
         val previewLine = remember(lines) {
-            lines.firstOrNull { !it.isGap && !Genius.isSectionHeader(it.text) }?.text
+            lines.firstOrNull { !it.isGap && !LrcParser.isSectionHeader(it.text) }?.text
         }
         val label = if (!previewLine.isNullOrBlank()) {
             "$previewLine • Tap for lyrics"

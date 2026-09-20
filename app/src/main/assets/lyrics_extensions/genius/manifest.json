@@ -1,0 +1,9 @@
+{
+  "id": "genius",
+  "name": "Genius",
+  "version": "1.0.0",
+  "description": "Massive web catalogue fallback for unsynced plain text lyrics.",
+  "author": "MusicBeat Community",
+  "wordSynced": false,
+  "defaultPriority": 8
+}

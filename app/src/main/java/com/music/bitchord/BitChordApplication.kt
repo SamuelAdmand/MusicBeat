@@ -61,6 +61,7 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
             CoroutineScope(Dispatchers.IO).launch { Innertube.ensureSessionScope() }
         }
         AppSettings.init(this)
+        com.music.bitchord.feature.lyrics.manager.LyricsExtensionManager.init(this)
         com.music.bitchord.data.settings.EqualizerSettings.init(this)
         SourceRegistry.init(this)
         SearchHistory.init(this)

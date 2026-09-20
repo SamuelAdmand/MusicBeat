@@ -85,7 +85,7 @@ object EmbeddedLyrics {
      */
     fun parseLyrics(raw: String): List<LyricLine> {
         if (raw.isBlank()) return emptyList()
-        val synced = LrcLib.parseLrc(raw)
+        val synced = LrcParser.parseLrc(raw)
         if (synced.any { !it.isGap && it.text.isNotBlank() }) {
             return synced
         }

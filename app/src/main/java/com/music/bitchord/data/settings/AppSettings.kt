@@ -406,18 +406,14 @@ object AppSettings {
      */
     val syncedLyrics = MutableStateFlow(true)
 
-    /** The databases [syncedLyrics] may ask. Empty is the same as off. */
-    val lyricsSources = MutableStateFlow(LyricsSource.entries.toSet())
+    /** The databases [syncedLyrics] may ask. Empty is the same as off. Populated dynamically from extensions. */
+    val lyricsSources = MutableStateFlow<Set<LyricsSource>>(emptySet())
 
     /**
-     * The order [lyricsSources] are asked in — see [LyricsRepository][com.music.bitchord.data.lyrics.LyricsRepository]:
-     * every enabled source is asked at once, but a higher-priority one still
-     * pending is never preempted by a lower one that happened to answer first.
-     * Reordered from Settings, so this is a full permutation of
-     * [LyricsSource.entries] rather than a subset — enabling and ordering are
-     * independent choices.
+     * The order [lyricsSources] are asked in.
+     * Reordered from Settings, populated dynamically from extensions.
      */
-    val lyricsSourceOrder = MutableStateFlow<List<LyricsSource>>(LyricsSource.entries)
+    val lyricsSourceOrder = MutableStateFlow<List<LyricsSource>>(emptyList())
 
     /**
      * Off, the highest-priority source to answer at all is taken as the
@@ -437,6 +433,15 @@ object AppSettings {
 
     /** When enabled, automatically writes online lyrics into local music files when played. */
     val autoEmbedLyrics = MutableStateFlow(true)
+
+    /** Configurable repository URL for remote lyrics extensions (like SpotiFLAC). */
+    val lyricsExtensionRepoUrl = MutableStateFlow(DEFAULT_LYRICS_EXTENSION_REPO_URL)
+
+    /** When enabled, automatically syncs lyrics extensions from the remote repository. */
+    val lyricsAutoUpdate = MutableStateFlow(true)
+
+    /** Timestamp of the last successful lyrics extensions sync. */
+    val lastLyricsExtensionSyncMs = MutableStateFlow(0L)
 
     /** Disk budget for cached audio. [AudioCache][com.music.bitchord.playback.AudioCache] evicts past it. */
     val audioCacheLimitBytes = MutableStateFlow(DEFAULT_CACHE_LIMIT_BYTES)
@@ -659,13 +664,14 @@ object AppSettings {
         doubleTapToSeek.value = prefs.getBoolean(KEY_DOUBLE_TAP_TO_SEEK, true)
         legacyMeshGradient.value = prefs.getBoolean(KEY_LEGACY_MESH_GRADIENT, false)
         syncedLyrics.value = prefs.getBoolean(KEY_SYNCED_LYRICS, true)
-        lyricsSources.value = readLyricsSources()
-        lyricsSourceOrder.value = readLyricsSourceOrder()
         prioritizeSyllableSync.value = prefs.getBoolean(KEY_PRIORITIZE_SYLLABLE_SYNC, false)
         paxSenixApiKey.value = prefs.getString(KEY_PAXSENIX_API_KEY, "").orEmpty()
-        com.music.bitchord.data.lyrics.PaxSenix.setApiKey(paxSenixApiKey.value)
         showLyricsLogs.value = prefs.getBoolean(KEY_SHOW_LYRICS_LOGS, false)
         autoEmbedLyrics.value = prefs.getBoolean(KEY_AUTO_EMBED_LYRICS, true)
+        lyricsExtensionRepoUrl.value = prefs.getString(KEY_LYRICS_EXTENSION_REPO_URL, DEFAULT_LYRICS_EXTENSION_REPO_URL)
+            .orEmpty().ifBlank { DEFAULT_LYRICS_EXTENSION_REPO_URL }
+        lyricsAutoUpdate.value = prefs.getBoolean(KEY_LYRICS_AUTO_UPDATE, true)
+        lastLyricsExtensionSyncMs.value = prefs.getLong(KEY_LAST_LYRICS_EXTENSION_SYNC, 0L)
         audioCacheLimitBytes.value = prefs.getLong(KEY_CACHE_LIMIT, DEFAULT_CACHE_LIMIT_BYTES)
             .coerceIn(DEFAULT_CACHE_LIMIT_BYTES, MAX_CACHE_LIMIT_BYTES)
         lastfmEnabled.value = prefs.getBoolean(KEY_LASTFM_ENABLED, false)
@@ -961,41 +967,41 @@ object AppSettings {
 
     fun setLyricsSources(value: Set<LyricsSource>) {
         lyricsSources.value = value
-        prefs.edit().putString(KEY_LYRICS_SOURCES, value.joinToString(",") { it.name }).apply()
+        prefs.edit().putString(KEY_LYRICS_SOURCES, value.joinToString(",") { it.id }).apply()
     }
 
     /**
-     * Stored as a joined list of names rather than a string set: a name that
-     * no longer exists — a source dropped in a later build — has to fall out
-     * quietly, and the default when nothing has been saved is "all of them",
-     * which a missing key and an empty set would otherwise be unable to tell
-     * apart.
+     * Stored as a joined list of IDs rather than a string set: an ID that
+     * no longer exists — a source dropped or deleted from the repo — falls out
+     * quietly, and the default when nothing has been saved is "all of them".
      */
-    private fun readLyricsSources(): Set<LyricsSource> {
+    private fun readLyricsSources(allSources: List<LyricsSource>): Set<LyricsSource> {
         val stored = prefs.getString(KEY_LYRICS_SOURCES, null)
-            ?: return LyricsSource.entries.toSet()
-        return stored.split(",")
-            .mapNotNull { name -> LyricsSource.entries.firstOrNull { it.name == name } }
-            .toSet()
+            ?: return allSources.toSet()
+        val ids = stored.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        val filtered = allSources.filter { it.id in ids }.toSet()
+        return filtered.ifEmpty { allSources.toSet() }
     }
 
     fun setLyricsSourceOrder(value: List<LyricsSource>) {
         lyricsSourceOrder.value = value
-        prefs.edit().putString(KEY_LYRICS_SOURCE_ORDER, value.joinToString(",") { it.name }).apply()
+        prefs.edit().putString(KEY_LYRICS_SOURCE_ORDER, value.joinToString(",") { it.id }).apply()
     }
 
-    /**
-     * A named source dropped from the stored order — an upgrade reordered
-     * since it was saved — falls out on read; one added since is appended, in
-     * [LyricsSource]'s own declared order, so a fresh install and an upgraded
-     * one agree on where a new source lands until the user says otherwise.
-     */
-    private fun readLyricsSourceOrder(): List<LyricsSource> {
+    private fun readLyricsSourceOrder(allSources: List<LyricsSource>): List<LyricsSource> {
         val stored = prefs.getString(KEY_LYRICS_SOURCE_ORDER, null)
-            ?: return LyricsSource.entries
-        val saved = stored.split(",")
-            .mapNotNull { name -> LyricsSource.entries.firstOrNull { it.name == name } }
-        return saved + LyricsSource.entries.filter { it !in saved }
+            ?: return allSources
+        val ids = stored.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val saved = ids.mapNotNull { id -> allSources.firstOrNull { it.id == id } }
+        return saved + allSources.filter { it !in saved }
+    }
+
+    fun refreshLyricsSources(allSources: List<LyricsSource>) {
+        if (allSources.isEmpty()) return
+        val currentEnabled = readLyricsSources(allSources)
+        val currentOrder = readLyricsSourceOrder(allSources)
+        lyricsSources.value = currentEnabled
+        lyricsSourceOrder.value = currentOrder
     }
 
     fun setPrioritizeSyllableSync(value: Boolean) {
@@ -1007,7 +1013,6 @@ object AppSettings {
         val normalized = value.trim()
         paxSenixApiKey.value = normalized
         prefs.edit().putString(KEY_PAXSENIX_API_KEY, normalized).apply()
-        com.music.bitchord.data.lyrics.PaxSenix.setApiKey(normalized)
     }
 
     fun setShowLyricsLogs(value: Boolean) {
@@ -1020,14 +1025,31 @@ object AppSettings {
         prefs.edit().putBoolean(KEY_AUTO_EMBED_LYRICS, value).apply()
     }
 
+    fun setLyricsExtensionRepoUrl(value: String) {
+        val normalized = value.trim()
+        lyricsExtensionRepoUrl.value = normalized
+        prefs.edit().putString(KEY_LYRICS_EXTENSION_REPO_URL, normalized).apply()
+    }
+
+    fun setLyricsAutoUpdate(value: Boolean) {
+        lyricsAutoUpdate.value = value
+        prefs.edit().putBoolean(KEY_LYRICS_AUTO_UPDATE, value).apply()
+    }
+
+    fun setLastLyricsExtensionSync(value: Long) {
+        lastLyricsExtensionSyncMs.value = value
+        prefs.edit().putLong(KEY_LAST_LYRICS_EXTENSION_SYNC, value).apply()
+    }
+
     /**
      * Puts the source list, its order and [prioritizeSyllableSync] back the
      * way a fresh install finds them. [syncedLyrics] itself is left alone —
      * this is "start over on *which* lyrics", not "turn lyrics off".
      */
     fun resetLyricsSourceSettings() {
-        setLyricsSources(LyricsSource.entries.toSet())
-        setLyricsSourceOrder(LyricsSource.entries)
+        val all = com.music.bitchord.feature.lyrics.manager.LyricsExtensionManager.dynamicSources.value
+        setLyricsSources(all.toSet())
+        setLyricsSourceOrder(all)
         setPrioritizeSyllableSync(false)
         setShowLyricsLogs(false)
     }
@@ -1541,6 +1563,11 @@ object AppSettings {
     private const val KEY_PAXSENIX_API_KEY = "paxsenix_api_key"
     private const val KEY_SHOW_LYRICS_LOGS = "show_lyrics_logs"
     private const val KEY_AUTO_EMBED_LYRICS = "auto_embed_lyrics"
+    const val DEFAULT_LYRICS_EXTENSION_REPO_URL =
+        "https://raw.githubusercontent.com/SamuelAdmand/MusicBeat-Lyrics-Extensions/main/registry.json"
+    private const val KEY_LYRICS_EXTENSION_REPO_URL = "lyrics_extension_repo_url"
+    private const val KEY_LYRICS_AUTO_UPDATE = "lyrics_auto_update"
+    private const val KEY_LAST_LYRICS_EXTENSION_SYNC = "last_lyrics_extension_sync"
     private const val KEY_REPLAY_GENRES = "replay_genres"
     private const val KEY_FILTER_NON_MUSIC_AUDIO = "filter_non_music_audio"
     private const val KEY_LOCAL_MUSIC_SORT = "local_music_sort"

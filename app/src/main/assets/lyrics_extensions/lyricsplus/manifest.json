@@ -1,0 +1,9 @@
+{
+  "id": "lyricsplus",
+  "name": "LyricsPlus",
+  "version": "1.0.0",
+  "description": "Syllable by syllable timings from community mirrors.",
+  "author": "MusicBeat Community",
+  "wordSynced": true,
+  "defaultPriority": 2
+}

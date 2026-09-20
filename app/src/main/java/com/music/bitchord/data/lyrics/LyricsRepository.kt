@@ -57,22 +57,21 @@ object LyricsRepository {
         artist: String,
         durationMs: Long,
         album: String? = null,
-        sources: Set<LyricsSource> = LyricsSource.entries.toSet(),
-        order: List<LyricsSource> = LyricsSource.entries,
+        sources: Set<LyricsSource> = com.music.bitchord.data.settings.AppSettings.lyricsSources.value,
+        order: List<LyricsSource> = com.music.bitchord.data.settings.AppSettings.lyricsSourceOrder.value,
         prioritizeSyllableSync: Boolean = false,
     ): Result? = coroutineScope {
         LyricsLog.clear()
         LyricsLog.i("Repository", "Looking up lyrics for \"$title\" by \"$artist\" (${durationMs / 1000}s)")
 
-        val sequence = order.filter { it in sources } +
-            LyricsSource.entries.filter { it in sources && it !in order }
+        val sequence = order.filter { it in sources }
 
         LyricsLog.i("Repository", "Active sources order: ${sequence.joinToString { it.label }}")
 
         // Genius is a plain text web scraper. To preserve bandwidth and avoid rate-limiting,
         // it starts lazily and is only contacted if all higher-priority synced sources miss.
         val racing: List<Pair<LyricsSource, Deferred<List<LyricLine>?>>> = sequence.map { source ->
-            val startMode = if (source == LyricsSource.GENIUS) kotlinx.coroutines.CoroutineStart.LAZY else kotlinx.coroutines.CoroutineStart.DEFAULT
+            val startMode = if (source.id == "genius") kotlinx.coroutines.CoroutineStart.LAZY else kotlinx.coroutines.CoroutineStart.DEFAULT
             source to async(Dispatchers.IO, start = startMode) {
                 fetch(source, videoId, title, artist, durationMs, album)
             }
@@ -82,12 +81,12 @@ object LyricsRepository {
             var lineSynced: Result? = null
             for ((source, job) in racing) {
                 // If we already found a line-synced or better result, skip Genius completely
-                if (lineSynced != null && source == LyricsSource.GENIUS) {
+                if (lineSynced != null && source.id == "genius") {
                     LyricsLog.i("Repository", "Skipping Genius fallback because higher-priority source answered")
                     continue
                 }
 
-                if (source == LyricsSource.GENIUS && lineSynced == null) {
+                if (source.id == "genius" && lineSynced == null) {
                     LyricsLog.w("Repository", "All synced providers missed. Running Genius fallback...")
                 }
 
@@ -110,7 +109,7 @@ object LyricsRepository {
         }
     }
 
-    private suspend fun fetch(
+    suspend fun fetch(
         source: LyricsSource,
         videoId: String,
         title: String,
@@ -118,20 +117,26 @@ object LyricsRepository {
         durationMs: Long,
         album: String?,
     ): List<LyricLine>? {
-        LyricsLog.i(source.label, "Querying $source...")
-        val found = when (source) {
-            LyricsSource.BETTER_LYRICS -> BetterLyrics.lyrics(title, artist, durationMs, album)
-            LyricsSource.LYRICS_PLUS -> LyricsPlus.lyrics(title, artist, durationMs, album)
-            LyricsSource.SIMP_MUSIC -> SimpMusicLyrics.lyrics(videoId, durationMs)
-            LyricsSource.LRCLIB -> LrcLib.lyrics(title, artist, durationMs)
-            LyricsSource.MUSIXMATCH -> Musixmatch.lyrics(title, artist, durationMs)
-            LyricsSource.PAXSENIX -> PaxSenix.lyrics(title, artist, durationMs, album)
-            LyricsSource.PAXSENIX_SPOTIFY -> PaxSenix.spotifyLyrics(title, artist, durationMs)
-            LyricsSource.PAXSENIX_MUSIXMATCH -> PaxSenix.musixmatchLyrics(title, artist, durationMs)
-            LyricsSource.KUGOU -> KuGou.lyrics(title, artist, durationMs, album)
-            LyricsSource.MEGALOBIZ -> Megalobiz.lyrics(title, artist)
-            LyricsSource.GENIUS -> Genius.lyrics(title, artist)
+        LyricsLog.i(source.label, "Querying ${source.label} (${source.id})...")
+
+        val ext = com.music.bitchord.feature.lyrics.manager.LyricsExtensionManager.getExtension(source.id)
+        var found: List<LyricLine>? = null
+
+        if (ext != null && ext.scriptFile.exists()) {
+            val raw = com.music.bitchord.feature.lyrics.engine.LyricsExtensionExecutor.getLyrics(
+                extensionId = ext.id,
+                scriptFile = ext.scriptFile,
+                title = title,
+                artist = artist,
+                durationMs = durationMs,
+                album = album,
+                videoId = videoId,
+            )
+            if (!raw.isNullOrBlank()) {
+                found = ProviderLyrics.parse(raw)
+            }
         }
+
         if (found.isNullOrEmpty()) {
             LyricsLog.w(source.label, "No lyrics returned")
         } else {

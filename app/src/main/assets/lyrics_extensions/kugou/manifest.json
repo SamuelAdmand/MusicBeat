@@ -1,0 +1,9 @@
+{
+  "id": "kugou",
+  "name": "KuGou",
+  "version": "1.0.0",
+  "description": "Whole lines, strong outside the English catalogue.",
+  "author": "MusicBeat Community",
+  "wordSynced": false,
+  "defaultPriority": 5
+}

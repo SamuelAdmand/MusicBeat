@@ -1,0 +1,9 @@
+{
+  "id": "simp-music",
+  "name": "SimpMusic",
+  "version": "1.0.0",
+  "description": "Matched on video ID, so never the wrong edit.",
+  "author": "MusicBeat Community",
+  "wordSynced": true,
+  "defaultPriority": 7
+}

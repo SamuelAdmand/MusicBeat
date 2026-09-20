@@ -8,10 +8,14 @@ import android.util.Log
 import com.kyant.taglib.TagLib
 import com.music.bitchord.data.Http
 import com.music.bitchord.data.lyrics.EmbeddedLyrics
-import com.music.bitchord.data.lyrics.LrcLib
+import com.music.bitchord.data.lyrics.LyricsRepository
+import com.music.bitchord.data.lyrics.LyricsSource
+import com.music.bitchord.data.lyrics.cleanArtistForSearch
 import com.music.bitchord.data.lyrics.toLrc
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.feature.lyricseditor.domain.model.LyricsEditorSource
+import com.music.bitchord.feature.lyricseditor.domain.model.LyricsSearchResultItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -22,20 +26,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import java.io.File
-
-import com.music.bitchord.data.lyrics.BetterLyrics
-import com.music.bitchord.data.lyrics.Genius
-import com.music.bitchord.data.lyrics.KuGou
-import com.music.bitchord.data.lyrics.LyricsPlus
-import com.music.bitchord.data.lyrics.LyricsRepository
-import com.music.bitchord.data.lyrics.LyricsSource
-import com.music.bitchord.data.lyrics.Megalobiz
-import com.music.bitchord.data.lyrics.Musixmatch
-import com.music.bitchord.data.lyrics.PaxSenix
-import com.music.bitchord.data.lyrics.SimpMusicLyrics
-import com.music.bitchord.data.lyrics.cleanArtistForSearch
-import com.music.bitchord.data.settings.AppSettings
-import com.music.bitchord.feature.lyricseditor.domain.model.LyricsSearchResultItem
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -149,10 +139,21 @@ object LocalLyricsManager {
         }
 
         val lines = runCatching {
-            LrcLib.lyrics(title = title, artist = normalizedArtist, durationMs = durationMs)
-                ?: if (cleanArtist.isNotBlank() && !cleanArtist.equals(normalizedArtist, ignoreCase = true)) {
-                    LrcLib.lyrics(title = title, artist = cleanArtist, durationMs = durationMs)
-                } else null
+            LyricsRepository.lyrics(
+                videoId = "",
+                title = title,
+                artist = normalizedArtist,
+                durationMs = durationMs,
+                album = album,
+            )?.lines ?: if (cleanArtist.isNotBlank() && !cleanArtist.equals(normalizedArtist, ignoreCase = true)) {
+                LyricsRepository.lyrics(
+                    videoId = "",
+                    title = title,
+                    artist = cleanArtist,
+                    durationMs = durationMs,
+                    album = album,
+                )?.lines
+            } else null
         }.getOrNull()
 
         val synced = lines?.takeIf { it.isNotEmpty() }?.toLrc()
@@ -209,211 +210,38 @@ object LocalLyricsManager {
         coroutineScope {
             val jobs = mutableListOf<Deferred<List<LyricsSearchResultItem>>>()
 
-            if (LyricsSource.LRCLIB in providers) {
-                jobs += async {
-                    searchLrcLib(title, artist, album)
-                }
-            }
-
-            if (LyricsSource.BETTER_LYRICS in providers) {
-                jobs += async {
-                    val lines = runCatching { BetterLyrics.lyrics(title, artist, durationMs, album) }.getOrNull()
-                    if (!lines.isNullOrEmpty()) {
-                        listOf(
-                            LyricsSearchResultItem(
-                                id = "betterlyrics_${System.currentTimeMillis()}",
+            for (source in providers) {
+                if (source.id == "lrclib") {
+                    jobs += async {
+                        searchLrcLib(title, artist, album)
+                    }
+                } else {
+                    jobs += async {
+                        val lines = runCatching {
+                            LyricsRepository.fetch(
+                                source = source,
+                                videoId = "",
                                 title = title,
-                                artist = artist,
+                                artist = primaryArtist.ifBlank { normalizedArtist },
+                                durationMs = durationMs,
                                 album = album,
-                                durationSeconds = (durationMs / 1000).toInt(),
-                                provider = LyricsSource.BETTER_LYRICS.label,
-                                syncedLyrics = lines.toLrc(),
-                                plainLyrics = lines.joinToString("\n") { it.text },
                             )
-                        )
-                    } else emptyList()
-                }
-            }
-
-            if (LyricsSource.LYRICS_PLUS in providers) {
-                jobs += async {
-                    val lines = runCatching { LyricsPlus.lyrics(title, artist, durationMs, album) }.getOrNull()
-                    if (!lines.isNullOrEmpty()) {
-                        listOf(
-                            LyricsSearchResultItem(
-                                id = "lyricsplus_${System.currentTimeMillis()}",
-                                title = title,
-                                artist = artist,
-                                album = album,
-                                durationSeconds = (durationMs / 1000).toInt(),
-                                provider = LyricsSource.LYRICS_PLUS.label,
-                                syncedLyrics = lines.toLrc(),
-                                plainLyrics = lines.joinToString("\n") { it.text },
+                        }.getOrNull()
+                        if (!lines.isNullOrEmpty()) {
+                            listOf(
+                                LyricsSearchResultItem(
+                                    id = "${source.id}_${System.currentTimeMillis()}",
+                                    title = title,
+                                    artist = artist,
+                                    album = album,
+                                    durationSeconds = (durationMs / 1000).toInt(),
+                                    provider = source.label,
+                                    syncedLyrics = lines.toLrc(),
+                                    plainLyrics = lines.joinToString("\n") { it.text },
+                                )
                             )
-                        )
-                    } else emptyList()
-                }
-            }
-
-            if (LyricsSource.PAXSENIX in providers) {
-                jobs += async {
-                    val lines = runCatching { PaxSenix.lyrics(title, artist, durationMs, album) }.getOrNull()
-                    if (!lines.isNullOrEmpty()) {
-                        listOf(
-                            LyricsSearchResultItem(
-                                id = "paxsenix_${System.currentTimeMillis()}",
-                                title = title,
-                                artist = artist,
-                                album = album,
-                                durationSeconds = (durationMs / 1000).toInt(),
-                                provider = LyricsSource.PAXSENIX.label,
-                                syncedLyrics = lines.toLrc(),
-                                plainLyrics = lines.joinToString("\n") { it.text },
-                            )
-                        )
-                    } else emptyList()
-                }
-            }
-
-            if (LyricsSource.PAXSENIX_SPOTIFY in providers) {
-                jobs += async {
-                    val lines = runCatching { PaxSenix.spotifyLyrics(title, artist, durationMs) }.getOrNull()
-                    if (!lines.isNullOrEmpty()) {
-                        listOf(
-                            LyricsSearchResultItem(
-                                id = "paxsenix_spotify_${System.currentTimeMillis()}",
-                                title = title,
-                                artist = artist,
-                                album = album,
-                                durationSeconds = (durationMs / 1000).toInt(),
-                                provider = LyricsSource.PAXSENIX_SPOTIFY.label,
-                                syncedLyrics = lines.toLrc(),
-                                plainLyrics = lines.joinToString("\n") { it.text },
-                            )
-                        )
-                    } else emptyList()
-                }
-            }
-
-            if (LyricsSource.PAXSENIX_MUSIXMATCH in providers) {
-                jobs += async {
-                    val lines = runCatching { PaxSenix.musixmatchLyrics(title, artist, durationMs) }.getOrNull()
-                    if (!lines.isNullOrEmpty()) {
-                        listOf(
-                            LyricsSearchResultItem(
-                                id = "paxsenix_musixmatch_${System.currentTimeMillis()}",
-                                title = title,
-                                artist = artist,
-                                album = album,
-                                durationSeconds = (durationMs / 1000).toInt(),
-                                provider = LyricsSource.PAXSENIX_MUSIXMATCH.label,
-                                syncedLyrics = lines.toLrc(),
-                                plainLyrics = lines.joinToString("\n") { it.text },
-                            )
-                        )
-                    } else emptyList()
-                }
-            }
-
-            if (LyricsSource.MEGALOBIZ in providers) {
-                jobs += async {
-                    val lines = runCatching { Megalobiz.lyrics(title, primaryArtist.ifBlank { normalizedArtist }) }.getOrNull()
-                    if (!lines.isNullOrEmpty()) {
-                        listOf(
-                            LyricsSearchResultItem(
-                                id = "megalobiz_${System.currentTimeMillis()}",
-                                title = title,
-                                artist = artist,
-                                album = album,
-                                durationSeconds = (durationMs / 1000).toInt(),
-                                provider = LyricsSource.MEGALOBIZ.label,
-                                syncedLyrics = lines.toLrc(),
-                                plainLyrics = lines.joinToString("\n") { it.text },
-                            )
-                        )
-                    } else emptyList()
-                }
-            }
-
-            if (LyricsSource.KUGOU in providers) {
-                jobs += async {
-                    val lines = runCatching { KuGou.lyrics(title, normalizedArtist, durationMs, album) }.getOrNull()
-                        ?: if (primaryArtist.isNotBlank() && !primaryArtist.equals(normalizedArtist, ignoreCase = true)) {
-                            runCatching { KuGou.lyrics(title, primaryArtist, durationMs, album) }.getOrNull()
-                        } else null
-                    if (!lines.isNullOrEmpty()) {
-                        listOf(
-                            LyricsSearchResultItem(
-                                id = "kugou_${System.currentTimeMillis()}",
-                                title = title,
-                                artist = artist,
-                                album = album,
-                                durationSeconds = (durationMs / 1000).toInt(),
-                                provider = LyricsSource.KUGOU.label,
-                                syncedLyrics = lines.toLrc(),
-                                plainLyrics = lines.joinToString("\n") { it.text },
-                            )
-                        )
-                    } else emptyList()
-                }
-            }
-
-            if (LyricsSource.MUSIXMATCH in providers) {
-                jobs += async {
-                    val lines = runCatching { Musixmatch.lyrics(title, artist, durationMs) }.getOrNull()
-                    if (!lines.isNullOrEmpty()) {
-                        listOf(
-                            LyricsSearchResultItem(
-                                id = "musixmatch_${System.currentTimeMillis()}",
-                                title = title,
-                                artist = artist,
-                                album = album,
-                                durationSeconds = (durationMs / 1000).toInt(),
-                                provider = LyricsSource.MUSIXMATCH.label,
-                                syncedLyrics = lines.toLrc(),
-                                plainLyrics = lines.joinToString("\n") { it.text },
-                            )
-                        )
-                    } else emptyList()
-                }
-            }
-
-            if (LyricsSource.GENIUS in providers) {
-                jobs += async {
-                    val lines = runCatching { Genius.lyrics(title, artist) }.getOrNull()
-                    if (!lines.isNullOrEmpty()) {
-                        listOf(
-                            LyricsSearchResultItem(
-                                id = "genius_${System.currentTimeMillis()}",
-                                title = title,
-                                artist = artist,
-                                album = album,
-                                durationSeconds = (durationMs / 1000).toInt(),
-                                provider = LyricsSource.GENIUS.label,
-                                plainLyrics = lines.joinToString("\n") { it.text },
-                            )
-                        )
-                    } else emptyList()
-                }
-            }
-
-            if (LyricsSource.SIMP_MUSIC in providers) {
-                jobs += async {
-                    val lines = runCatching { SimpMusicLyrics.lyrics("", durationMs) }.getOrNull()
-                    if (!lines.isNullOrEmpty()) {
-                        listOf(
-                            LyricsSearchResultItem(
-                                id = "simpmusic_${System.currentTimeMillis()}",
-                                title = title,
-                                artist = artist,
-                                album = album,
-                                durationSeconds = (durationMs / 1000).toInt(),
-                                provider = LyricsSource.SIMP_MUSIC.label,
-                                syncedLyrics = lines.toLrc(),
-                                plainLyrics = lines.joinToString("\n") { it.text },
-                            )
-                        )
-                    } else emptyList()
+                        } else emptyList()
+                    }
                 }
             }
 

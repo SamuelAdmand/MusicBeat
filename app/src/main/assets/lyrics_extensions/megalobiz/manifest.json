@@ -1,0 +1,9 @@
+{
+  "id": "megalobiz",
+  "name": "Megalobiz",
+  "version": "1.0.0",
+  "description": "Community-made, whole-line LRC.",
+  "author": "MusicBeat Community",
+  "wordSynced": false,
+  "defaultPriority": 9
+}

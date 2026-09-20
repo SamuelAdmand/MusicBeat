@@ -1,0 +1,9 @@
+{
+  "id": "musixmatch",
+  "name": "Musixmatch",
+  "version": "1.0.0",
+  "description": "Whole lines from the world's largest lyrics catalogue.",
+  "author": "MusicBeat Community",
+  "wordSynced": false,
+  "defaultPriority": 6
+}

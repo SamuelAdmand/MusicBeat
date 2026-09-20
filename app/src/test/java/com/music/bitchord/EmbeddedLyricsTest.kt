@@ -1,7 +1,7 @@
 package com.music.bitchord
 
 import com.music.bitchord.data.lyrics.EmbeddedLyrics
-import com.music.bitchord.data.lyrics.LrcLib
+import com.music.bitchord.data.lyrics.LrcParser
 import com.music.bitchord.data.lyrics.LyricLine
 import com.music.bitchord.data.lyrics.LyricWord
 import com.music.bitchord.data.lyrics.toEnhancedLrc
@@ -118,7 +118,7 @@ class EmbeddedLyricsTest {
         )
         for (bytes in written) {
             // The word-timed field wins over the plain one sitting beside it.
-            val read = LrcLib.parseLrc(requireNotNull(EmbeddedLyrics.fromBytes(bytes)))
+            val read = LrcParser.parseLrc(requireNotNull(EmbeddedLyrics.fromBytes(bytes)))
             assertEquals(1, read.size)
             assertEquals("two words", read[0].text)
             assertEquals(listOf("two", "words"), read[0].words.map { it.text })
@@ -196,7 +196,7 @@ class EmbeddedLyricsTest {
             ),
         )
         val root = packageDir("lyrics.lrc" to words.toEnhancedLrc())
-        val read = LrcLib.parseLrc(requireNotNull(EmbeddedLyrics.sidecar(File(root, "playlist.m3u8").path)))
+        val read = LrcParser.parseLrc(requireNotNull(EmbeddedLyrics.sidecar(File(root, "playlist.m3u8").path)))
         assertEquals(listOf("two", "words"), read.single().words.map { it.text })
         assertEquals(listOf(1_000L, 1_400L), read.single().words.map { it.startMs })
     }

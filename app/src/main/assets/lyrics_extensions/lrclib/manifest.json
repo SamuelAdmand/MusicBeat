@@ -1,0 +1,9 @@
+{
+  "id": "lrclib",
+  "name": "LRCLIB",
+  "version": "1.0.0",
+  "description": "Free, open community lyrics database with line-synced LRC.",
+  "author": "MusicBeat Community",
+  "wordSynced": false,
+  "defaultPriority": 4
+}
