@@ -279,6 +279,7 @@ fun SettingsScreen(
                         append("Exported ")
                         val parts = mutableListOf<String>()
                         if (summary.playlists > 0) parts += "${summary.playlists} ${if (summary.playlists == 1) "playlist" else "playlists"}"
+                        if (summary.favorites > 0) parts += "${summary.favorites} ${if (summary.favorites == 1) "favorite" else "favorites"}"
                         if (summary.hasEqualizer) parts += "equalizer"
                         parts += "settings"
                         if (summary.months > 0) parts += context.countOfMonths(summary.months)
@@ -302,6 +303,7 @@ fun SettingsScreen(
                         append("Restored ")
                         val parts = mutableListOf<String>()
                         if (summary.playlists > 0) parts += "${summary.playlists} ${if (summary.playlists == 1) "playlist" else "playlists"}"
+                        if (summary.favorites > 0) parts += "${summary.favorites} ${if (summary.favorites == 1) "favorite" else "favorites"}"
                         if (summary.hasEqualizer) parts += "equalizer"
                         parts += "settings"
                         if (summary.months > 0) parts += context.countOfMonths(summary.months)

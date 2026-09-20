@@ -159,22 +159,26 @@ object LocalMediaRepository {
                     val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
                     val dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
                     val dateModifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
-                    val albumArtBaseUri = Uri.parse("content://media/external/audio/albumart")
 
                     while (cursor.moveToNext()) {
                         val id = cursor.getLong(idCol)
                         val name = cursor.getString(nameCol) ?: continue
                         val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString()
                         val albumId = cursor.getLong(albumIdCol)
+                        val dateModified = cursor.getLong(dateModifiedCol)
+                        val trackArtworkUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+                            .buildUpon()
+                            .apply {
+                                if (albumId > 0) appendQueryParameter("albumId", albumId.toString())
+                                if (dateModified > 0) appendQueryParameter("t", dateModified.toString())
+                            }
+                            .build()
+                            .toString()
                         val tags = ScannedTags(
                             albumName = cursor.getString(albumCol).cleanTag(),
-                            artworkUrl = if (albumId > 0) {
-                                ContentUris.withAppendedId(albumArtBaseUri, albumId).toString()
-                            } else {
-                                null
-                            },
+                            artworkUrl = trackArtworkUri,
                             dateAddedSeconds = cursor.getLong(dateAddedCol),
-                            dateModifiedSeconds = cursor.getLong(dateModifiedCol),
+                            dateModifiedSeconds = dateModified,
                         )
                         scanned[contentUri] = tags
                         if (contentUri !in knownUris && isAudioFileName(name)) {
@@ -309,8 +313,6 @@ object LocalMediaRepository {
                 val dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
                 val dateModifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
 
-                val albumArtBaseUri = Uri.parse("content://media/external/audio/albumart")
-
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idCol)
                     val displayName = cursor.getString(displayNameCol).orEmpty()
@@ -329,7 +331,15 @@ object LocalMediaRepository {
                         ?: "Track $id"
                     val artist = rawArtist.takeUnless { it.isNullOrBlank() || it == "<unknown>" } ?: "Unknown Artist"
                     val albumName = rawAlbum.takeUnless { it.isNullOrBlank() || it == "<unknown>" }
-                    val artworkUrl = if (albumId > 0) ContentUris.withAppendedId(albumArtBaseUri, albumId).toString() else null
+                    val dateModified = cursor.getLong(dateModifiedCol)
+                    val artworkUrl = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+                        .buildUpon()
+                        .apply {
+                            if (albumId > 0) appendQueryParameter("albumId", albumId.toString())
+                            if (dateModified > 0) appendQueryParameter("t", dateModified.toString())
+                        }
+                        .build()
+                        .toString()
                     val durationText = formatDuration(durationMs)
 
                     songs.add(
@@ -473,11 +483,22 @@ object LocalMediaRepository {
             retriever.release()
         }
 
+        val trackArtwork = scanned?.artworkUrl ?: run {
+            val mod = scanned?.dateModifiedSeconds
+            if (mod != null && mod > 0) {
+                runCatching {
+                    Uri.parse(uriStr).buildUpon().appendQueryParameter("t", mod.toString()).build().toString()
+                }.getOrDefault(uriStr)
+            } else {
+                uriStr
+            }
+        }
+
         return Song(
             videoId = uriStr,
             title = title,
             artist = artist,
-            thumbnailUrl = scanned?.artworkUrl,
+            thumbnailUrl = trackArtwork,
             durationText = durationText,
             albumName = albumName ?: scanned?.albumName,
             localUri = uriStr,

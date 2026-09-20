@@ -7,8 +7,11 @@ import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.EqualizerBackup
 import com.music.bitchord.data.settings.EqualizerSettings
 import com.music.bitchord.data.settings.SearchHistory
+import com.music.bitchord.feature.localmusic.data.LocalFavoritesStore
 import com.music.bitchord.feature.localmusic.data.LocalPlaylistStore
 import com.music.bitchord.feature.localmusic.domain.model.LocalPlaylist
+import com.music.bitchord.feature.localsongactions.data.LocalPlayStatsStore
+import com.music.bitchord.feature.localsongactions.domain.model.LocalPlayStats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -20,6 +23,8 @@ import java.time.format.DateTimeFormatter
 /**
  * Manages backup and restore of offline player data for MusicBeat:
  * - Local user playlists ([LocalPlaylistStore])
+ * - Local song favorites ([LocalFavoritesStore])
+ * - Local song play & skip stats ([LocalPlayStatsStore])
  * - Equalizer & audio effect configurations ([EqualizerSettings])
  * - Offline preferences & blacklisted folders ([AppSettings])
  * - Local listening statistics & aggregates ([ListeningStats])
@@ -28,7 +33,7 @@ import java.time.format.DateTimeFormatter
 object Backup {
 
     private const val APP_TAG = "musicbeat"
-    private const val SCHEMA_VERSION = 1
+    private const val SCHEMA_VERSION = 2
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -49,6 +54,8 @@ object Backup {
         runCatching {
             val buckets = ListeningStats.exportAll()
             val playlists = LocalPlaylistStore.exportPlaylists()
+            val favorites = LocalFavoritesStore.exportFavorites()
+            val playStats = LocalPlayStatsStore.exportStats(context)
             val equalizer = EqualizerSettings.exportBackup()
             val settingsMap = AppSettings.exportPrefs().mapNotNull { (key, value) ->
                 PrefValue.of(value)?.let { key to it }
@@ -61,6 +68,8 @@ object Backup {
                 exportedAt = Instant.now().toString(),
                 settings = settingsMap,
                 playlists = playlists,
+                favorites = favorites,
+                playStats = playStats,
                 equalizer = equalizer,
                 listening = buckets,
             )
@@ -71,15 +80,17 @@ object Backup {
 
             ExportSummary(
                 playlists = playlists.size,
+                favorites = favorites.size,
                 settings = settingsMap.size,
                 months = buckets.size,
                 hasEqualizer = equalizer.enabled,
+                playStats = playStats.size,
             )
         }
     }
 
     /**
-     * Reads [source] and restores offline player data (playlists, equalizer, settings, history).
+     * Reads [source] and restores offline player data (playlists, favorites, stats, equalizer, settings, history).
      */
     suspend fun importFrom(context: Context, source: Uri): Result<Summary> = withContext(Dispatchers.IO) {
         runCatching {
@@ -95,6 +106,12 @@ object Backup {
             }
 
             LocalPlaylistStore.importPlaylists(file.playlists)
+            if (file.version >= 2 || file.favorites.isNotEmpty()) {
+                LocalFavoritesStore.importFavorites(file.favorites)
+            }
+            if (file.playStats.isNotEmpty()) {
+                LocalPlayStatsStore.importStats(context, file.playStats)
+            }
             EqualizerSettings.importBackup(file.equalizer)
             AppSettings.importPrefs(file.settings.mapValues { it.value.decoded() })
             ListeningStats.importAll(file.listening)
@@ -102,9 +119,11 @@ object Backup {
 
             Summary(
                 playlists = file.playlists.size,
+                favorites = file.favorites.size,
                 settings = file.settings.size,
                 months = file.listening.size,
                 hasEqualizer = file.equalizer != null,
+                playStats = file.playStats.size,
                 from = file.versionName,
                 at = file.exportedAt,
             )
@@ -113,16 +132,20 @@ object Backup {
 
     data class ExportSummary(
         val playlists: Int,
+        val favorites: Int,
         val settings: Int,
         val months: Int,
         val hasEqualizer: Boolean,
+        val playStats: Int = 0,
     )
 
     data class Summary(
         val playlists: Int,
+        val favorites: Int,
         val settings: Int,
         val months: Int,
         val hasEqualizer: Boolean,
+        val playStats: Int = 0,
         val from: String,
         val at: String,
     )
@@ -135,6 +158,8 @@ object Backup {
         val exportedAt: String = "",
         val settings: Map<String, PrefValue> = emptyMap(),
         val playlists: List<LocalPlaylist> = emptyList(),
+        val favorites: Set<String> = emptySet(),
+        val playStats: Map<String, LocalPlayStats> = emptyMap(),
         val equalizer: EqualizerBackup? = null,
         val listening: List<StoredBucket> = emptyList(),
     )

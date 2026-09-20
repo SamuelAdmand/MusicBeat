@@ -1,11 +1,13 @@
 package com.music.bitchord.feature.localsongactions.domain.model
 
+import kotlinx.serialization.Serializable
 import java.text.DateFormat
 import java.util.Date
 
 /**
  * Playback statistics for a local song.
  */
+@Serializable
 data class LocalPlayStats(
     val playedCount: Int = 0,
     val skippedCount: Int = 0,

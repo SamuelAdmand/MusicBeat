@@ -77,4 +77,11 @@ object LocalFavoritesStore {
             persist()
         }
     }
+
+    fun exportFavorites(): Set<String> = _favoriteIds.value
+
+    fun importFavorites(incoming: Set<String>) {
+        _favoriteIds.value = incoming
+        persist()
+    }
 }

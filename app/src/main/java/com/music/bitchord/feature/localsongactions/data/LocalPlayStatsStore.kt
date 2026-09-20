@@ -61,4 +61,32 @@ object LocalPlayStatsStore {
             .apply()
         return LocalPlayStats.Empty
     }
+
+    fun exportStats(context: Context): Map<String, LocalPlayStats> {
+        val prefs = getPrefs(context)
+        val all = prefs.all
+        val songIds = mutableSetOf<String>()
+        all.keys.forEach { key ->
+            when {
+                key.startsWith(KEY_PLAY_COUNT) -> songIds.add(key.removePrefix(KEY_PLAY_COUNT))
+                key.startsWith(KEY_SKIP_COUNT) -> songIds.add(key.removePrefix(KEY_SKIP_COUNT))
+                key.startsWith(KEY_LAST_PLAYED) -> songIds.add(key.removePrefix(KEY_LAST_PLAYED))
+            }
+        }
+        return songIds.associateWith { songId ->
+            getStats(context, songId)
+        }
+    }
+
+    fun importStats(context: Context, incoming: Map<String, LocalPlayStats>) {
+        if (incoming.isEmpty()) return
+        val prefs = getPrefs(context)
+        val editor = prefs.edit()
+        incoming.forEach { (songId, stats) ->
+            if (stats.playedCount > 0) editor.putInt(KEY_PLAY_COUNT + songId, stats.playedCount)
+            if (stats.skippedCount > 0) editor.putInt(KEY_SKIP_COUNT + songId, stats.skippedCount)
+            if (stats.lastPlayedTimestamp > 0L) editor.putLong(KEY_LAST_PLAYED + songId, stats.lastPlayedTimestamp)
+        }
+        editor.apply()
+    }
 }

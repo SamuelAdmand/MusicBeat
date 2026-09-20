@@ -26,6 +26,7 @@ import com.music.bitchord.data.stats.ListeningStats
 import com.music.bitchord.download.Downloads
 import com.music.bitchord.feature.artistimage.coil.ArtistImageFetcher
 import com.music.bitchord.feature.artistimage.coil.ArtistImageKeyer
+import com.music.bitchord.feature.localmusic.coil.LocalAudioArtworkFetcher
 import com.music.bitchord.feature.localmusic.data.LocalPlaylistStore
 import com.music.bitchord.feature.localmusic.data.LocalFavoritesStore
 import kotlinx.coroutines.CoroutineScope
@@ -126,6 +127,8 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
             .components {
                 add(ArtistImageKeyer())
                 add(ArtistImageFetcher.Factory())
+                add(LocalAudioArtworkFetcher.CoilUriFactory(context))
+                add(LocalAudioArtworkFetcher.AndroidUriFactory(context))
             }
             .memoryCache {
                 MemoryCache.Builder()
