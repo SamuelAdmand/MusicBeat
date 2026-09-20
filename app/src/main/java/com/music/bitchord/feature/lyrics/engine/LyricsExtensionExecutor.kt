@@ -27,15 +27,16 @@ import java.util.concurrent.TimeUnit
 object LyricsExtensionExecutor {
 
     private const val TAG = "LyricsExtension"
-    private const val EXECUTION_TIMEOUT_MS = 7_000L
+    private const val EXECUTION_TIMEOUT_MS = 15_000L
+    private const val SEARCH_TIMEOUT_MS = 30_000L
 
     private val engineMap = ConcurrentHashMap<String, QuickJs>()
     private val engineLocks = ConcurrentHashMap<String, Mutex>()
 
     private val httpClient by lazy {
         Http.client.newBuilder()
-            .callTimeout(6, TimeUnit.SECONDS)
-            .connectTimeout(3, TimeUnit.SECONDS)
+            .callTimeout(10, TimeUnit.SECONDS)
+            .connectTimeout(5, TimeUnit.SECONDS)
             .build()
     }
 
@@ -76,6 +77,8 @@ object LyricsExtensionExecutor {
                         put("videoId", videoId ?: "")
                     }.toString()
 
+                    LyricsLog.i(extensionId, "getLyrics query: title='$title', artist='$artist'")
+
                     qjs.evaluate<String>(
                         """
                         var __lyrics_result = undefined;
@@ -85,6 +88,7 @@ object LyricsExtensionExecutor {
                                     var r = await module.exports.getLyrics($trackJson);
                                     __lyrics_result = (r !== undefined && r !== null) ? String(r) : 'null';
                                 } else {
+                                    console.warn('[LyricsExt] getLyrics not found on module.exports');
                                     __lyrics_result = 'null';
                                 }
                             } catch(e) {
@@ -96,6 +100,7 @@ object LyricsExtensionExecutor {
                     )
 
                     val result = qjs.evaluate<String>("__lyrics_result || 'null'")
+                    LyricsLog.i(extensionId, "getLyrics result: ${result.take(100)}")
                     if (result == "null" || result.isBlank()) null else result
                 } catch (e: Throwable) {
                     LyricsLog.w(extensionId, "Execution failed: ${e.message}")
@@ -117,7 +122,7 @@ object LyricsExtensionExecutor {
     ): String? = withContext(Dispatchers.Default) {
         val lock = getLock(extensionId)
         lock.withLock {
-            withTimeoutOrNull(EXECUTION_TIMEOUT_MS) {
+            withTimeoutOrNull(SEARCH_TIMEOUT_MS) {
                 try {
                     val qjs = getOrInitEngine(extensionId, scriptFile) ?: return@withTimeoutOrNull null
                     val queryJson = JSONObject().apply {
@@ -125,6 +130,8 @@ object LyricsExtensionExecutor {
                         put("artist", artist)
                         put("album", album ?: "")
                     }.toString()
+
+                    LyricsLog.i(extensionId, "searchLyrics query: title='$title', artist='$artist'")
 
                     qjs.evaluate<String>(
                         """
@@ -135,9 +142,11 @@ object LyricsExtensionExecutor {
                                     var r = await module.exports.searchLyrics($queryJson);
                                     __search_result = JSON.stringify(r);
                                 } else {
+                                    console.warn('[LyricsExt] searchLyrics not found on module.exports');
                                     __search_result = '[]';
                                 }
                             } catch(e) {
+                                console.error('[LyricsExt search error] ' + (e && e.message ? e.message : String(e)));
                                 __search_result = '[]';
                             }
                         })();
@@ -145,8 +154,10 @@ object LyricsExtensionExecutor {
                     )
 
                     val result = qjs.evaluate<String>("__search_result || '[]'")
+                    LyricsLog.i(extensionId, "searchLyrics result: ${result.take(200)}")
                     if (result == "[]" || result.isBlank()) null else result
                 } catch (e: Throwable) {
+                    LyricsLog.e(extensionId, "searchLyrics exception: ${e.message}")
                     null
                 }
             }
@@ -362,5 +373,8 @@ object LyricsExtensionExecutor {
             val respBody = response.body?.string() ?: ""
             Pair(code, respBody)
         }
-    }.getOrElse { Pair(0, "") }
+    }.getOrElse {
+        LyricsLog.w(TAG, "executeHttp failed for $url: ${it.message}")
+        Pair(0, "")
+    }
 }

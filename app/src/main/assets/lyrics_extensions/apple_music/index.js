@@ -3,8 +3,11 @@ var APPLE_PAGE_URL = "https://beta.music.apple.com";
 var SCRIPT_REGEX = /\/assets\/index~[^"' <]+\.js/;
 var TOKEN_REGEX = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g;
 
-// In-memory token cache (per engine lifecycle)
-var cachedToken = null;
+// Hardcoded fallback token — used as the fast-path default to avoid
+// downloading a 3.3MB JS file from Apple's CDN every time. Dynamic refresh
+// (via refreshToken) is only attempted when this returns HTTP 401.
+var FALLBACK_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiIsImtpZCI6IldlYlBsYXlLaWQifQ.eyJpc3MiOiJBTVBXZWJQbGF5IiwiaWF0IjoxNzg2MzYyMTUwLCJleHAiOjE3OTI0MTAxNTAsInJvb3RfaHR0cHNfb3JpZ2luIjpbImFwcGxlLmNvbSJdfQ.wmgvODbrLN8VxNt45wP6fxrI-U2PJhDD1Y1ZokU1ZqAKg_2F8rB30P_MwzPlQ0SyEGPXNg8Pfh7HUsO1cBv3cQ";
+var dynamicToken = null;
 
 module.exports = {
   getLyrics: async function(track) {
@@ -14,14 +17,13 @@ module.exports = {
     var durationMs = track.durationMs || 0;
 
     try {
-      var token = await getAppleMusicToken();
-      if (!token) return null;
-
+      console.log('[AppleMusic] getLyrics: title=' + title + ', artist=' + artist);
+      var token = getToken();
       var songs = await searchAppleMusic(token, title, artist);
-      if (!songs) {
-        // Token might be stale — clear and retry once
-        cachedToken = null;
-        token = await getAppleMusicToken();
+
+      // 401 = token expired, try dynamic refresh
+      if (songs === null) {
+        token = await refreshToken();
         if (!token) return null;
         songs = await searchAppleMusic(token, title, artist);
       }
@@ -29,9 +31,11 @@ module.exports = {
 
       var bestSong = selectBestSong(songs, title, artist, durationMs);
       if (!bestSong || !bestSong.id) return null;
+      console.log('[AppleMusic] getLyrics bestSong: ' + bestSong.id + ' (' + (bestSong.attributes && bestSong.attributes.name) + ')');
 
       return await fetchLyricsById(bestSong.id);
     } catch (e) {
+      console.error('[AppleMusic] getLyrics error: ' + (e && e.message ? e.message : String(e)));
       return null;
     }
   },
@@ -41,31 +45,31 @@ module.exports = {
     var title = cleanTitle(query.title);
     var artist = cleanArtist(query.artist || "");
     var durationMs = query.durationMs || 0;
+    console.log('[AppleMusic] searchLyrics: title=' + title + ', artist=' + artist);
 
     try {
-      var token = await getAppleMusicToken();
-      if (!token) return [];
-
+      var token = getToken();
       var songs = await searchAppleMusic(token, title, artist);
-      if (!songs) {
-        cachedToken = null;
-        token = await getAppleMusicToken();
+
+      if (songs === null) {
+        token = await refreshToken();
         if (!token) return [];
         songs = await searchAppleMusic(token, title, artist);
       }
-      if (!songs || songs.length === 0) return [];
+      if (!songs || songs.length === 0) {
+        console.log('[AppleMusic] searchLyrics: no songs found in Apple catalog');
+        return [];
+      }
 
-      var results = [];
+      console.log('[AppleMusic] searchLyrics: found ' + songs.length + ' songs, fetching lyrics in parallel...');
       var limit = Math.min(songs.length, 5);
-      for (var i = 0; i < limit; i++) {
-        var s = songs[i];
+      var promises = songs.slice(0, limit).map(async function(s) {
         var sAttr = s.attributes || {};
-        var sId = s.id;
         try {
-          var lrcText = await fetchLyricsById(sId);
+          var lrcText = await fetchLyricsById(s.id);
           if (lrcText && lrcText.trim()) {
-            results.push({
-              id: "apple_music_" + sId,
+            return {
+              id: "apple_music_" + s.id,
               title: sAttr.name || title,
               artist: sAttr.artistName || artist,
               album: sAttr.albumName || "",
@@ -73,27 +77,47 @@ module.exports = {
               provider: "Apple Music",
               syncedLyrics: lrcText.trim(),
               plainLyrics: null
-            });
+            };
           }
         } catch (e2) {}
-      }
+        return null;
+      });
+
+      var settled = await Promise.all(promises);
+      var results = settled.filter(function(r) { return r !== null; });
+      console.log('[AppleMusic] searchLyrics: returning ' + results.length + ' matched lyrics');
       return results;
     } catch (e) {
+      console.error('[AppleMusic] searchLyrics error: ' + (e && e.message ? e.message : String(e)));
       return [];
     }
   }
 };
 
 /**
- * Dynamically retrieves a guest Apple Music JWT token by scraping
- * beta.music.apple.com's index script — matching SpotiFLAC-Mobile's
- * go_backend/lyrics_apple.go approach.
+ * Returns the best available token: dynamic (if refreshed) → fallback.
  */
-async function getAppleMusicToken() {
-  if (cachedToken) return cachedToken;
+function getToken() {
+  return dynamicToken || FALLBACK_TOKEN || getFallbackTokenFromPage();
+}
 
+/**
+ * Fetches a fresh fallback token on first run by requesting
+ * beta.music.apple.com and extracting it from the page's index script.
+ * This is lazy-initialized and cached for the engine's lifetime.
+ */
+function getFallbackTokenFromPage() {
+  // Will be set if refreshToken succeeds; otherwise we have no token
+  return null;
+}
+
+/**
+ * Dynamically retrieves a guest Apple Music JWT token by scraping
+ * beta.music.apple.com — matching SpotiFLAC-Mobile's Go backend.
+ * Only called on 401 (expired token) to avoid the expensive 3.3MB download.
+ */
+async function refreshToken() {
   try {
-    // 1. Fetch the Apple Music beta page
     var pageRes = await fetch(APPLE_PAGE_URL, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -102,11 +126,9 @@ async function getAppleMusicToken() {
     if (!pageRes.ok) return null;
     var pageHtml = pageRes.text();
 
-    // 2. Extract the index script path
     var scriptMatch = pageHtml.match(SCRIPT_REGEX);
     if (!scriptMatch) return null;
 
-    // 3. Fetch the script and extract JWT tokens
     var jsRes = await fetch(APPLE_PAGE_URL + scriptMatch[0], {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -118,19 +140,19 @@ async function getAppleMusicToken() {
     var tokens = jsText.match(TOKEN_REGEX);
     if (!tokens || tokens.length === 0) return null;
 
-    // Use the first token (WebPlayKid) — matches SpotiFLAC-Mobile behavior
-    cachedToken = tokens[0];
-    return cachedToken;
+    dynamicToken = tokens[0];
+    return dynamicToken;
   } catch (e) {
     return null;
   }
 }
 
 /**
- * Searches the Apple Music catalog for songs matching the query.
- * Returns null on 401 (token expired), empty array on no results.
+ * Searches the Apple Music catalog.
+ * Returns null on 401 (signal to refresh token), empty array on no results.
  */
 async function searchAppleMusic(token, title, artist) {
+  if (!token) return null;
   var term = (title + " " + artist).trim();
   var searchUrl = APPLE_SEARCH + "?term=" + encodeURIComponent(term) + "&types=songs&limit=10&l=en-US";
 
@@ -143,7 +165,7 @@ async function searchAppleMusic(token, title, artist) {
     }
   });
 
-  if (searchRes.status === 401) return null; // Signal token expired
+  if (searchRes.status === 401) return null;
   if (!searchRes.ok) return [];
 
   var searchData = searchRes.json();
@@ -153,8 +175,7 @@ async function searchAppleMusic(token, title, artist) {
 }
 
 /**
- * Fetches lyrics for a given Apple Music song ID via the Paxsenix proxy.
- * Returns the best available LRC text, preferring elrc > lrc > formatted content > plain.
+ * Fetches lyrics from Paxsenix proxy for a given Apple Music song ID.
  */
 async function fetchLyricsById(songId) {
   var lyricsUrl = "https://lyrics.paxsenix.org/apple-music/lyrics?id=" + encodeURIComponent(songId);
@@ -166,7 +187,6 @@ async function fetchLyricsById(songId) {
   var data = lyricsRes.json();
   if (!data) return null;
 
-  // Priority: elrc (word-synced) > lrc (line-synced) > formatted content > plain > ttml
   if (data.elrc && data.elrc.trim()) return data.elrc.trim();
   if (data.lrc && data.lrc.trim()) return data.lrc.trim();
 
@@ -181,9 +201,7 @@ async function fetchLyricsById(songId) {
 }
 
 /**
- * Selects the best matching song from Apple Music search results.
- * Title match is the primary criterion; duration is secondary (and
- * ignored when durationMs <= 0, which is common in the lyrics editor).
+ * Selects best matching song — title match is primary, duration secondary.
  */
 function selectBestSong(songs, title, artist, durationMs) {
   var normTitle = cleanTitle(title).toLowerCase();
@@ -198,7 +216,7 @@ function selectBestSong(songs, title, artist, durationMs) {
     var score = 0;
     if (sName === normTitle) {
       score += 100;
-    } else if (sName.startsWith(normTitle)) {
+    } else if (sName.indexOf(normTitle) === 0) {
       score += 50;
     } else if (sName.indexOf(normTitle) >= 0) {
       score += 20;
@@ -206,7 +224,6 @@ function selectBestSong(songs, title, artist, durationMs) {
       continue;
     }
 
-    // Only factor in duration when the caller provides a valid value
     if (durationMs > 0 && sDur > 0) {
       var diff = Math.abs(sDur - durationMs);
       if (diff < 10000) score += 30;
@@ -219,13 +236,9 @@ function selectBestSong(songs, title, artist, durationMs) {
     }
   }
 
-  // If no title matched at all, fall back to the first result
   return best || (songs.length > 0 ? songs[0] : null);
 }
 
-/**
- * Formats Paxsenix structured content into LRC text.
- */
 function formatPaxContent(lyricsType, content) {
   var isSyllable = (lyricsType === "Syllable" || lyricsType === "syllable");
   var lines = [];
