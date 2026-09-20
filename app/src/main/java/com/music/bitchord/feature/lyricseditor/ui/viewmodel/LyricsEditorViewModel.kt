@@ -52,7 +52,23 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
     private val editedLyricsMap = mutableMapOf<LyricsEditorSource, String>()
     private var activeSong: Song? = null
 
+    var lastSearchTitle: String? = null
+        private set
+    var lastSearchArtist: String? = null
+        private set
+    var lastSearchAlbum: String? = null
+        private set
+    var lastSearchProviders: Set<LyricsSource>? = null
+        private set
+
     fun loadSong(song: Song) {
+        if (activeSong?.videoId != song.videoId) {
+            clearSearchResults()
+            lastSearchTitle = null
+            lastSearchArtist = null
+            lastSearchAlbum = null
+            lastSearchProviders = null
+        }
         activeSong = song
         viewModelScope.launch {
             _isLoading.value = true
@@ -94,6 +110,11 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
         album: String? = null,
         providers: Set<LyricsSource>? = null,
     ) {
+        lastSearchTitle = title
+        lastSearchArtist = artist
+        lastSearchAlbum = album
+        lastSearchProviders = providers
+
         viewModelScope.launch {
             _isLoading.value = true
             val sources = providers ?: AppSettings.lyricsSources.value
@@ -127,6 +148,11 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
         album: String? = null,
         providers: Set<LyricsSource>,
     ) {
+        lastSearchTitle = title
+        lastSearchArtist = artist
+        lastSearchAlbum = album
+        lastSearchProviders = providers
+
         viewModelScope.launch {
             _isSearchingResults.value = true
             val durationMs = activeSong?.durationMillis() ?: 0L
@@ -139,6 +165,17 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
             )
             _searchResults.value = items
             _isSearchingResults.value = false
+        }
+    }
+
+    fun research() {
+        val song = activeSong
+        val title = lastSearchTitle ?: song?.title.orEmpty()
+        val artist = lastSearchArtist ?: song?.artist.orEmpty()
+        val album = lastSearchAlbum ?: song?.albumName
+        val providers = lastSearchProviders ?: AppSettings.lyricsSources.value
+        if (title.isNotBlank() || artist.isNotBlank()) {
+            searchAllProviders(title, artist, album, providers)
         }
     }
 
@@ -164,7 +201,7 @@ class LyricsEditorViewModel(app: Application) : AndroidViewModel(app) {
                 _toastMessage.emit("Loaded plain lyrics from ${item.provider}")
             }
         }
-        clearSearchResults()
+        // Do NOT call clearSearchResults() here: retain search results so user can switch or re-check.
     }
 
     fun downloadLyrics(title: String, artist: String) {

@@ -119,7 +119,7 @@ fun SystemBarIcons(dark: Boolean) {
     if (view.isInEditMode) return
     val window = findWindow(view) ?: return
     SideEffect {
-        WindowCompat.getInsetsController(window, view).apply {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
             isAppearanceLightStatusBars = dark
             isAppearanceLightNavigationBars = dark
         }

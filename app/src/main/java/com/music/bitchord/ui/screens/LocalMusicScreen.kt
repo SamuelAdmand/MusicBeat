@@ -839,7 +839,6 @@ fun LocalMusicScreen(
                 song = song,
                 onBackClick = { lyricsEditorSong = null },
                 onLyricsSaved = {
-                    lyricsEditorSong = null
                     onSongTagsOrLyricsSaved?.invoke(song)
                 },
             )

@@ -16,18 +16,28 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,22 +47,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.feature.lyricseditor.domain.model.LyricsEditorSource
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsDownloadDialog
+import com.music.bitchord.feature.lyricseditor.ui.components.LyricsDownloadSheet
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsEditorBottomBar
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsEditorHeader
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsEditorTopBar
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsSearchResultsDialog
+import com.music.bitchord.feature.lyricseditor.ui.components.LyricsSearchResultsSheet
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsSelectorDialog
 import com.music.bitchord.feature.lyricseditor.ui.components.LyricsSourcePillSelector
 import com.music.bitchord.feature.lyricseditor.ui.viewmodel.LyricsEditorViewModel
+import androidx.compose.ui.graphics.luminance
+import com.music.bitchord.ui.theme.SystemBarIcons
 
 @Composable
 fun LyricsEditorScreen(
@@ -62,6 +80,9 @@ fun LyricsEditorScreen(
     viewModel: LyricsEditorViewModel = viewModel(),
     onLyricsSaved: (() -> Unit)? = null,
 ) {
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    SystemBarIcons(dark = !isDarkTheme)
+
     val context = LocalContext.current
     val clipboardManager = remember {
         context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
@@ -78,6 +99,13 @@ fun LyricsEditorScreen(
     var showDownloadDialog by remember { mutableStateOf(false) }
     var showSearchResultsDialog by remember { mutableStateOf(false) }
     var textFieldValue by remember { mutableStateOf(TextFieldValue(currentText)) }
+
+    val lineCount = remember(currentText) {
+        currentText.lineSequence().filter { it.isNotBlank() }.count()
+    }
+    val isTimeSynced = remember(currentText) {
+        currentText.contains(Regex("""\[\d{2}:\d{2}"""))
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult(),
@@ -173,7 +201,11 @@ fun LyricsEditorScreen(
                     }
                 },
                 onDownloadClick = {
-                    showDownloadDialog = true
+                    if (searchResults.isNotEmpty()) {
+                        showSearchResultsDialog = true
+                    } else {
+                        showDownloadDialog = true
+                    }
                 },
                 onSaveClick = {
                     handleSave()
@@ -198,20 +230,39 @@ fun LyricsEditorScreen(
                     viewModel.undoChanges()
                     Toast.makeText(context, "Changes undone", Toast.LENGTH_SHORT).show()
                 },
+                onInsertTimestampClick = {
+                    val current = textFieldValue.text
+                    val cursor = textFieldValue.selection.start.coerceIn(0, current.length)
+                    val before = current.substring(0, cursor)
+                    val after = current.substring(cursor)
+                    val insert = if (before.isNotEmpty() && !before.endsWith("\n")) "\n[00:00.00]" else "[00:00.00]"
+                    val newText = before + insert + after
+                    val newCursor = cursor + insert.length
+                    textFieldValue = TextFieldValue(newText, TextRange(newCursor))
+                    viewModel.updateText(newText)
+                },
+                onClearAllClick = {
+                    textFieldValue = TextFieldValue("")
+                    viewModel.updateText("")
+                    Toast.makeText(context, "Cleared lyrics", Toast.LENGTH_SHORT).show()
+                },
             )
         },
+        containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier.imePadding(),
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             LyricsEditorHeader(
                 song = song,
                 isLoading = isLoading,
+                lineCount = lineCount,
+                isTimeSynced = isTimeSynced,
             )
 
             LyricsSourcePillSelector(
@@ -222,42 +273,127 @@ fun LyricsEditorScreen(
                 enabled = !isLoading && !isSaving,
             )
 
-            AnimatedVisibility(visible = isFileSource) {
-                Text(
-                    text = "Companion LRC file will be saved alongside the audio file",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
+            AnimatedVisibility(
+                visible = isFileSource,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
                     modifier = Modifier.fillMaxWidth(),
-                )
+                ) {
+                    Text(
+                        text = "Companion .lrc file will be saved alongside the audio file",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
             }
 
-            OutlinedTextField(
-                value = textFieldValue,
-                onValueChange = { newValue ->
-                    textFieldValue = newValue
-                    viewModel.updateText(newValue.text)
-                },
-                placeholder = {
-                    Text("Write lyrics here...")
-                },
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                ),
+            // Modern Studio Lyrics Text Box
+            Surface(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-            )
+                shape = RoundedCornerShape(22.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Studio status bar
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Code,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Text(
+                                text = "LRC Studio",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.5.sp,
+                                ),
+                            )
+                        }
+
+                        Text(
+                            text = "$lineCount lines • ${textFieldValue.text.length} chars",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                        )
+                    }
+
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                        thickness = 1.dp,
+                    )
+
+                    TextField(
+                        value = textFieldValue,
+                        onValueChange = { newValue ->
+                            textFieldValue = newValue
+                            viewModel.updateText(newValue.text)
+                        },
+                        placeholder = {
+                            Text(
+                                text = "Write or paste lyrics here...\n\nExample:\n[00:12.30]First line of lyrics\n[00:15.80]Second line of lyrics",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    lineHeight = 22.sp,
+                                    fontSize = 13.5.sp,
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.5.sp,
+                            lineHeight = 22.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        ),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                        ),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 4.dp),
+                    )
+                }
+            }
         }
     }
 
     if (showDownloadDialog) {
-        LyricsDownloadDialog(
+        LyricsDownloadSheet(
             initialTitle = song.title,
             initialArtist = song.artist,
             initialAlbum = song.albumName,
+            hasPreviousResults = searchResults.isNotEmpty(),
+            previousResultsCount = searchResults.size,
+            onViewPreviousResultsClick = {
+                showDownloadDialog = false
+                showSearchResultsDialog = true
+            },
             onDismissRequest = { showDownloadDialog = false },
             onAutoDownloadClick = { title, artist, album, providers ->
                 showDownloadDialog = false
@@ -272,12 +408,11 @@ fun LyricsEditorScreen(
     }
 
     if (showSearchResultsDialog) {
-        LyricsSearchResultsDialog(
+        LyricsSearchResultsSheet(
             results = searchResults,
             isSearching = isSearchingResults,
             onDismissRequest = {
                 showSearchResultsDialog = false
-                viewModel.clearSearchResults()
             },
             onResultSelected = { item ->
                 showSearchResultsDialog = false
@@ -286,6 +421,9 @@ fun LyricsEditorScreen(
             onRefineSearchClick = {
                 showSearchResultsDialog = false
                 showDownloadDialog = true
+            },
+            onResearchClick = {
+                viewModel.research()
             },
         )
     }

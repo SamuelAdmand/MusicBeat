@@ -37,6 +37,8 @@ import com.music.bitchord.feature.tageditor.ui.components.TagEditorImageOptionsD
 import com.music.bitchord.feature.tageditor.ui.components.TagEditorSaveFab
 import com.music.bitchord.feature.tageditor.ui.components.TagEditorTopBar
 import com.music.bitchord.feature.tageditor.ui.viewmodel.TagEditorViewModel
+import androidx.compose.ui.graphics.luminance
+import com.music.bitchord.ui.theme.SystemBarIcons
 
 @Composable
 fun TagEditorScreen(
@@ -46,6 +48,9 @@ fun TagEditorScreen(
     viewModel: TagEditorViewModel = viewModel(),
     onTagsSaved: (() -> Unit)? = null,
 ) {
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    SystemBarIcons(dark = !isDarkTheme)
+
     val context = LocalContext.current
     val tags by viewModel.tags.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()

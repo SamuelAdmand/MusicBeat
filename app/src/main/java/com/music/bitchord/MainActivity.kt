@@ -2331,8 +2331,6 @@ private fun BitChordApp(
                                 songActions = null
                             },
                             onLyricsSaved = {
-                                showLyricsEditor = false
-                                songActions = null
                                 viewModel.reloadLyrics(song)
                             },
                         )
