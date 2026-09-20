@@ -1,9 +1,0 @@
-{
-  "id": "betterlyrics",
-  "name": "BetterLyrics",
-  "version": "1.0.0",
-  "description": "Apple Music timings, word by word via BetterLyrics API.",
-  "author": "MusicBeat Community",
-  "wordSynced": true,
-  "defaultPriority": 1
-}

@@ -60,53 +60,23 @@ object LyricsRepository {
         sources: Set<LyricsSource> = com.music.bitchord.data.settings.AppSettings.lyricsSources.value,
         order: List<LyricsSource> = com.music.bitchord.data.settings.AppSettings.lyricsSourceOrder.value,
         prioritizeSyllableSync: Boolean = false,
-    ): Result? = coroutineScope {
+    ): Result? {
         LyricsLog.clear()
         LyricsLog.i("Repository", "Looking up lyrics for \"$title\" by \"$artist\" (${durationMs / 1000}s)")
 
-        val sequence = order.filter { it in sources }
-
-        LyricsLog.i("Repository", "Active sources order: ${sequence.joinToString { it.label }}")
-
-        // Genius is a plain text web scraper. To preserve bandwidth and avoid rate-limiting,
-        // it starts lazily and is only contacted if all higher-priority synced sources miss.
-        val racing: List<Pair<LyricsSource, Deferred<List<LyricLine>?>>> = sequence.map { source ->
-            val startMode = if (source.id == "genius") kotlinx.coroutines.CoroutineStart.LAZY else kotlinx.coroutines.CoroutineStart.DEFAULT
-            source to async(Dispatchers.IO, start = startMode) {
-                fetch(source, videoId, title, artist, durationMs, album)
+        return LyricsFetchEngine.fetchLyrics(
+            videoId = videoId,
+            title = title,
+            artist = artist,
+            durationMs = durationMs,
+            album = album,
+            sources = sources,
+            order = order,
+            prioritizeSyllableSync = prioritizeSyllableSync,
+            fetcher = { source, vId, t, a, dMs, alb ->
+                fetch(source, vId, t, a, dMs, alb)
             }
-        }
-
-        try {
-            var lineSynced: Result? = null
-            for ((source, job) in racing) {
-                // If we already found a line-synced or better result, skip Genius completely
-                if (lineSynced != null && source.id == "genius") {
-                    LyricsLog.i("Repository", "Skipping Genius fallback because higher-priority source answered")
-                    continue
-                }
-
-                if (source.id == "genius" && lineSynced == null) {
-                    LyricsLog.w("Repository", "All synced providers missed. Running Genius fallback...")
-                }
-
-                val lines = runCatching { job.await() }.getOrNull() ?: continue
-                if (lines.any { it.isWordSynced }) {
-                    LyricsLog.s("Repository", "Word-synced match from ${source.label}")
-                    return@coroutineScope result(source, lines)
-                }
-                if (!prioritizeSyllableSync && lines.any { it.timeMs > 0 }) {
-                    LyricsLog.s("Repository", "Line-synced match from ${source.label}")
-                    return@coroutineScope result(source, lines)
-                }
-                if (lineSynced == null) lineSynced = result(source, lines)
-            }
-            lineSynced
-        } finally {
-            // Whoever lost the race is no longer worth waiting on, and
-            // coroutineScope will not return while they are still running.
-            racing.forEach { it.second.cancel() }
-        }
+        )
     }
 
     suspend fun fetch(

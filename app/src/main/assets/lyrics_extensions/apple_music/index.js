@@ -4,8 +4,8 @@ var FALLBACK_APPLE_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiIsImtpZCI6IldlYlBs
 module.exports = {
   getLyrics: async function(track) {
     if (!track || !track.title) return null;
-    var title = track.title;
-    var artist = track.artist || "";
+    var title = cleanTitle(track.title);
+    var artist = cleanArtist(track.artist || "");
     var durationMs = track.durationMs || 0;
 
     try {
@@ -17,7 +17,7 @@ module.exports = {
           "Authorization": "Bearer " + FALLBACK_APPLE_TOKEN,
           "Origin": "https://music.apple.com",
           "Referer": "https://music.apple.com/",
-          "User-Agent": "BitChord (https://github.com/bitchord)"
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
       });
       if (!searchRes.ok) return null;
@@ -25,7 +25,7 @@ module.exports = {
       var songs = searchData && searchData.results && searchData.results.songs && searchData.results.songs.data;
       if (!Array.isArray(songs) || songs.length === 0) return null;
 
-      // Pick best matching song ID
+      // Pick best matching song ID by duration and title match
       var bestId = null;
       var bestDiff = 999999999;
       for (var i = 0; i < songs.length; i++) {
@@ -42,7 +42,7 @@ module.exports = {
       // 2. Fetch lyrics from PaxSenix proxy
       var lyricsUrl = "https://lyrics.paxsenix.org/apple-music/lyrics?id=" + encodeURIComponent(bestId) + "&ttml=true";
       var lyricsRes = await fetch(lyricsUrl, {
-        headers: { "User-Agent": "BitChord (https://github.com/bitchord)" }
+        headers: { "User-Agent": "MusicBeat/1.0 (Android)" }
       });
       if (!lyricsRes.ok) return null;
       var raw = lyricsRes.text();
@@ -52,3 +52,14 @@ module.exports = {
     }
   }
 };
+
+function cleanTitle(t) {
+  return t.replace(/\((?:feat\.?|official|video|audio|remix)[^)]*\)/gi, " ")
+          .replace(/\[[^\]]*\]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+}
+
+function cleanArtist(a) {
+  return a.split(/[,&/]/)[0].trim();
+}

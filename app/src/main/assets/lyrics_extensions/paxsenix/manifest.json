@@ -1,9 +1,0 @@
-{
-  "id": "paxsenix",
-  "name": "PaxSenix",
-  "version": "1.0.0",
-  "description": "Apple Music timings on a second independent host.",
-  "author": "MusicBeat Community",
-  "wordSynced": true,
-  "defaultPriority": 3
-}

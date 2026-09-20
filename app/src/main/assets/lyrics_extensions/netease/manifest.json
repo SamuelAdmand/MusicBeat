@@ -1,0 +1,10 @@
+{
+  "id": "netease",
+  "name": "Netease",
+  "version": "1.0.0",
+  "description": "NetEase Cloud Music (good for Asian songs)",
+  "author": "SpotiFLAC / MusicBeat",
+  "entrypoint": "index.js",
+  "wordSynced": false,
+  "defaultPriority": 4
+}

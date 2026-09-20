@@ -70,7 +70,12 @@ object LyricsExtensionManager {
 
         runCatching {
             val assetManager = context.assets
-            val bundledDirs = assetManager.list("$ASSETS_DIR/extensions") ?: emptyArray()
+            val hasNestedExtensions = assetManager.list("$ASSETS_DIR/extensions")?.isNotEmpty() == true
+            val bundledDirs = if (hasNestedExtensions) {
+                assetManager.list("$ASSETS_DIR/extensions") ?: emptyArray()
+            } else {
+                assetManager.list(ASSETS_DIR)?.filter { it != "registry.json" && it != "README.md" && !it.contains(".") }?.toTypedArray() ?: emptyArray()
+            }
 
             for (extName in bundledDirs) {
                 val targetDir = File(extDir, extName)
@@ -78,10 +83,11 @@ object LyricsExtensionManager {
 
                 val manifestFile = File(targetDir, "manifest.json")
                 val scriptFile = File(targetDir, "index.js")
+                val assetPrefix = if (hasNestedExtensions) "$ASSETS_DIR/extensions/$extName" else "$ASSETS_DIR/$extName"
 
                 if (!manifestFile.exists()) {
                     runCatching {
-                        assetManager.open("$ASSETS_DIR/extensions/$extName/manifest.json").use { input ->
+                        assetManager.open("$assetPrefix/manifest.json").use { input ->
                             manifestFile.outputStream().use { output -> input.copyTo(output) }
                         }
                     }
@@ -89,7 +95,7 @@ object LyricsExtensionManager {
 
                 if (!scriptFile.exists()) {
                     runCatching {
-                        assetManager.open("$ASSETS_DIR/extensions/$extName/index.js").use { input ->
+                        assetManager.open("$assetPrefix/index.js").use { input ->
                             scriptFile.outputStream().use { output -> input.copyTo(output) }
                         }
                     }
