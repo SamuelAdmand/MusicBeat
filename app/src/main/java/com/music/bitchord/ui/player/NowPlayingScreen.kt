@@ -78,6 +78,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.music.bitchord.feature.localmusic.data.LocalFavoritesStore
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Undo
@@ -681,6 +682,7 @@ fun NowPlayingScreen(
 
     val syncedLyricsEnabled by AppSettings.syncedLyrics.collectAsStateWithLifecycle()
     val hideVolumeBar by AppSettings.hideVolumeBar.collectAsStateWithLifecycle()
+    val favoriteIds by LocalFavoritesStore.favoriteIds.collectAsStateWithLifecycle()
 
     // Animated cover art: the looping video some labels publish alongside a
     // release, laid over the sleeve. A miss is the normal answer — see
@@ -1998,25 +2000,7 @@ fun NowPlayingScreen(
                         )
                     }
                     Spacer(Modifier.width(10.dp))
-                    // Beside the credits rather than down in the toggle row:
-                    // liking is about *this song*, and the row below is about
-                    // how the queue plays. Guests get nothing to tap, since
-                    // there's no account to record it against — and neither
-                    // does a local file or a finished download, which carries
-                    // no YouTube identity to rate.
-                    if (signedIn && song.localUri == null) {
-                        val liked = likeStatus == LikeStatus.LIKE
-                        CircleGlyph(
-                            icon = if (liked) BitChordIcons.HeartFilled else BitChordIcons.Heart,
-                            contentDescription = stringResource(
-                                if (liked) R.string.remove_from_liked else R.string.like,
-                            ),
-                            onClick = onToggleLike,
-                            active = liked,
-                            haptic = if (liked) Haptic.ToggleOff else Haptic.ToggleOn,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    }
+
                     CircleGlyph(
                         icon = if (showRevertCue) Icons.AutoMirrored.Rounded.Undo else Icons.Rounded.MoreHoriz,
                         contentDescription = stringResource(R.string.more),
@@ -2452,15 +2436,25 @@ fun NowPlayingScreen(
                         else -> Haptic.Select
                     },
                 )
+                val isLocal = song.localUri != null
+                val isLocalFav = isLocal && ((song.localUri?.toString() in favoriteIds) || (song.videoId in favoriteIds))
+                val liked = if (isLocal) isLocalFav else (likeStatus == LikeStatus.LIKE)
+                val likeAvailable = isLocal || signedIn
                 BottomGlyph(
-                    icon = BitChordIcons.Infinity,
+                    icon = if (liked) BitChordIcons.HeartFilled else BitChordIcons.Heart,
                     contentDescription = stringResource(
-                        if (autoplayEnabled) R.string.autoplay_on else R.string.autoplay_off,
+                        if (liked) R.string.remove_from_liked else R.string.like,
                     ),
-                    onClick = onToggleAutoplay,
-                    highlighted = autoplayEnabled,
-                    haptic = if (autoplayEnabled) Haptic.ToggleOff else Haptic.ToggleOn,
-                    tapWindowMs = AUTOPLAY_TAP_WINDOW_MS,
+                    onClick = {
+                        if (isLocal) {
+                            LocalFavoritesStore.toggleFavorite(song.localUri?.toString() ?: song.videoId)
+                        } else {
+                            onToggleLike()
+                        }
+                    },
+                    highlighted = liked,
+                    enabled = likeAvailable,
+                    haptic = if (liked) Haptic.ToggleOff else Haptic.ToggleOn,
                 )
                 BottomGlyph(
                     icon = Icons.AutoMirrored.Rounded.QueueMusic,
@@ -3586,6 +3580,7 @@ private fun BottomGlyph(
     contentDescription: String,
     onClick: () -> Unit,
     highlighted: Boolean = false,
+    enabled: Boolean = true,
     haptic: Haptic = Haptic.Tap,
     label: String? = null,
     /**
@@ -3607,9 +3602,10 @@ private fun BottomGlyph(
             .size(44.dp)
             .clip(CircleShape)
             .background(
-                if (highlighted) Color.White.copy(alpha = 0.20f) else Color.Transparent,
+                if (highlighted && enabled) Color.White.copy(alpha = 0.20f) else Color.Transparent,
             )
             .clickable(
+                enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
             ) {
@@ -3623,7 +3619,13 @@ private fun BottomGlyph(
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
     ) {
-        val tint = Color.White.copy(alpha = if (highlighted) 1f else 0.75f)
+        val tint = Color.White.copy(
+            alpha = when {
+                !enabled -> 0.30f
+                highlighted -> 1f
+                else -> 0.75f
+            },
+        )
         if (icon != null) {
             Icon(
                 imageVector = icon,

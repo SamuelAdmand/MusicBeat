@@ -27,6 +27,7 @@ import com.music.bitchord.download.Downloads
 import com.music.bitchord.feature.artistimage.coil.ArtistImageFetcher
 import com.music.bitchord.feature.artistimage.coil.ArtistImageKeyer
 import com.music.bitchord.feature.localmusic.data.LocalPlaylistStore
+import com.music.bitchord.feature.localmusic.data.LocalFavoritesStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,6 +75,7 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
         // without a media-store query per row.
         Downloads.init(this)
         LocalPlaylistStore.init(this)
+        LocalFavoritesStore.init(this)
         // The device's own listening record. Opened here rather than in
         // PlaybackService because the Replay page reads it from the UI side and
         // both live in this process — one owner, one directory.

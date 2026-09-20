@@ -255,10 +255,25 @@ fun LocalMusicScreen(
     } else {
         AppSettings.localArtistSort.collectAsStateWithLifecycle()
     }
-    val viewType by if (isDownloads) {
-        AppSettings.downloadedMusicViewType.collectAsStateWithLifecycle()
+    val songsViewType by if (isDownloads) {
+        AppSettings.downloadedSongsViewType.collectAsStateWithLifecycle()
     } else {
-        AppSettings.localMusicViewType.collectAsStateWithLifecycle()
+        AppSettings.localSongsViewType.collectAsStateWithLifecycle()
+    }
+    val albumsViewType by if (isDownloads) {
+        AppSettings.downloadedAlbumsViewType.collectAsStateWithLifecycle()
+    } else {
+        AppSettings.localAlbumsViewType.collectAsStateWithLifecycle()
+    }
+    val artistsViewType by if (isDownloads) {
+        AppSettings.downloadedArtistsViewType.collectAsStateWithLifecycle()
+    } else {
+        AppSettings.localArtistsViewType.collectAsStateWithLifecycle()
+    }
+    val drillDownViewType by if (isDownloads) {
+        AppSettings.downloadedDrillDownSongsViewType.collectAsStateWithLifecycle()
+    } else {
+        AppSettings.localDrillDownSongsViewType.collectAsStateWithLifecycle()
     }
     val sortedSongs = remember(songs, sortOrder) { songs.sortedForLibrary(sortOrder) }
     var selectedDownloadIds by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -567,7 +582,12 @@ fun LocalMusicScreen(
                         artworkUrl = drillDownArt,
                         songs = drillDownSongs,
                         isArtist = isArtist,
-                        viewType = viewType,
+                        viewType = drillDownViewType,
+                        onViewTypeToggle = {
+                            val next = if (drillDownViewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
+                            if (isDownloads) AppSettings.setDownloadedDrillDownSongsViewType(next)
+                            else AppSettings.setLocalDrillDownSongsViewType(next)
+                        },
                         selectedIds = selectedDownloadIds,
                         currentSong = currentSong,
                         isPlaying = isPlaying,
@@ -600,16 +620,16 @@ fun LocalMusicScreen(
                 key == "tab:$LOCAL_TAB_SONGS" -> {
                     SongsTab(
                         songs = sortedSongs,
-                        viewType = viewType,
+                        viewType = songsViewType,
                         sortOrder = sortOrder,
                         onSortOrderChange = {
                             if (isDownloads) AppSettings.setDownloadedMusicSort(it)
                             else AppSettings.setLocalMusicSort(it)
                         },
                         onViewTypeToggle = {
-                            val next = if (viewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
-                            if (isDownloads) AppSettings.setDownloadedMusicViewType(next)
-                            else AppSettings.setLocalMusicViewType(next)
+                            val next = if (songsViewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
+                            if (isDownloads) AppSettings.setDownloadedSongsViewType(next)
+                            else AppSettings.setLocalSongsViewType(next)
                         },
                         selectedIds = selectedDownloadIds,
                         currentSong = currentSong,
@@ -655,11 +675,11 @@ fun LocalMusicScreen(
                     }
                     ArtistsTab(
                         artists = artists,
-                        viewType = viewType,
+                        viewType = artistsViewType,
                         onViewTypeToggle = {
-                            val next = if (viewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
-                            if (isDownloads) AppSettings.setDownloadedMusicViewType(next)
-                            else AppSettings.setLocalMusicViewType(next)
+                            val next = if (artistsViewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
+                            if (isDownloads) AppSettings.setDownloadedArtistsViewType(next)
+                            else AppSettings.setLocalArtistsViewType(next)
                         },
                         artistSort = artistSort,
                         onArtistSortChange = {
@@ -682,11 +702,11 @@ fun LocalMusicScreen(
                     }
                     AlbumsTab(
                         albums = albums,
-                        viewType = viewType,
+                        viewType = albumsViewType,
                         onViewTypeToggle = {
-                            val next = if (viewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
-                            if (isDownloads) AppSettings.setDownloadedMusicViewType(next)
-                            else AppSettings.setLocalMusicViewType(next)
+                            val next = if (albumsViewType == LibraryViewType.GRID) LibraryViewType.LIST else LibraryViewType.GRID
+                            if (isDownloads) AppSettings.setDownloadedAlbumsViewType(next)
+                            else AppSettings.setLocalAlbumsViewType(next)
                         },
                         selectedKeys = selectedAlbumKeys,
                         onAlbumClick = { entry ->

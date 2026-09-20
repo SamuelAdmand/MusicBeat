@@ -39,7 +39,11 @@ import coil3.compose.AsyncImage
 import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
+import com.music.bitchord.feature.localmusic.data.LocalFavoritesStore
 import com.music.bitchord.ui.components.thumbnailBorder
+import com.music.bitchord.ui.icons.BitChordIcons
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
 
 /**
  * Modal bottom sheet presenting primary actions for a local song:
@@ -86,10 +90,22 @@ fun LocalSongActionsSheet(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
             )
 
+            val favoriteIds by LocalFavoritesStore.favoriteIds.collectAsStateWithLifecycle()
+            val isFav = (song.localUri?.toString() in favoriteIds) || (song.videoId in favoriteIds)
+
             LocalSongActionItem(
                 icon = Icons.Rounded.Replay,
                 label = "Play again",
                 onClick = onPlayAgain,
+            )
+
+            LocalSongActionItem(
+                icon = if (isFav) BitChordIcons.HeartFilled else BitChordIcons.Heart,
+                label = if (isFav) "Remove from favorites" else "Add to favorites",
+                onClick = {
+                    LocalFavoritesStore.toggleFavorite(song.localUri?.toString() ?: song.videoId)
+                    onDismissRequest()
+                },
             )
 
             LocalSongActionItem(

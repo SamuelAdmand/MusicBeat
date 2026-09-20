@@ -466,8 +466,18 @@ object AppSettings {
     val downloadedMusicSort = MutableStateFlow(LocalMusicSort.TITLE_ASC)
     val localArtistSort = MutableStateFlow(ArtistSort.MOST_SONGS)
     val downloadedArtistSort = MutableStateFlow(ArtistSort.MOST_SONGS)
+    val localSongsViewType = MutableStateFlow(LibraryViewType.LIST)
+    val localAlbumsViewType = MutableStateFlow(LibraryViewType.GRID)
+    val localArtistsViewType = MutableStateFlow(LibraryViewType.GRID)
     val localMusicViewType = MutableStateFlow(LibraryViewType.LIST)
+    val downloadedSongsViewType = MutableStateFlow(LibraryViewType.LIST)
+    val downloadedAlbumsViewType = MutableStateFlow(LibraryViewType.GRID)
+    val downloadedArtistsViewType = MutableStateFlow(LibraryViewType.GRID)
     val downloadedMusicViewType = MutableStateFlow(LibraryViewType.LIST)
+    val libraryPlaylistsViewType = MutableStateFlow(LibraryViewType.GRID)
+    val librarySongsViewType = MutableStateFlow(LibraryViewType.LIST)
+    val localDrillDownSongsViewType = MutableStateFlow(LibraryViewType.LIST)
+    val downloadedDrillDownSongsViewType = MutableStateFlow(LibraryViewType.LIST)
     val librarySort = MutableStateFlow(LibrarySort.DEFAULT)
 
     /**
@@ -692,8 +702,18 @@ object AppSettings {
         downloadedMusicSort.value = readLocalMusicSort(KEY_DOWNLOADED_MUSIC_SORT)
         localArtistSort.value = readArtistSort(KEY_LOCAL_ARTIST_SORT)
         downloadedArtistSort.value = readArtistSort(KEY_DOWNLOADED_ARTIST_SORT)
-        localMusicViewType.value = readLibraryViewType(KEY_LOCAL_MUSIC_VIEW_TYPE)
-        downloadedMusicViewType.value = readLibraryViewType(KEY_DOWNLOADED_MUSIC_VIEW_TYPE)
+        localMusicViewType.value = readLibraryViewType(KEY_LOCAL_MUSIC_VIEW_TYPE, LibraryViewType.LIST)
+        localSongsViewType.value = readLibraryViewType(KEY_LOCAL_SONGS_VIEW_TYPE, localMusicViewType.value)
+        localAlbumsViewType.value = readLibraryViewType(KEY_LOCAL_ALBUMS_VIEW_TYPE, LibraryViewType.GRID)
+        localArtistsViewType.value = readLibraryViewType(KEY_LOCAL_ARTISTS_VIEW_TYPE, LibraryViewType.GRID)
+        downloadedMusicViewType.value = readLibraryViewType(KEY_DOWNLOADED_MUSIC_VIEW_TYPE, LibraryViewType.LIST)
+        downloadedSongsViewType.value = readLibraryViewType(KEY_DOWNLOADED_SONGS_VIEW_TYPE, downloadedMusicViewType.value)
+        downloadedAlbumsViewType.value = readLibraryViewType(KEY_DOWNLOADED_ALBUMS_VIEW_TYPE, LibraryViewType.GRID)
+        downloadedArtistsViewType.value = readLibraryViewType(KEY_DOWNLOADED_ARTISTS_VIEW_TYPE, LibraryViewType.GRID)
+        libraryPlaylistsViewType.value = readLibraryViewType(KEY_LIBRARY_PLAYLISTS_VIEW_TYPE, LibraryViewType.GRID)
+        librarySongsViewType.value = readLibraryViewType(KEY_LIBRARY_SONGS_VIEW_TYPE, LibraryViewType.LIST)
+        localDrillDownSongsViewType.value = readLibraryViewType(KEY_LOCAL_DRILLDOWN_SONGS_VIEW_TYPE, LibraryViewType.LIST)
+        downloadedDrillDownSongsViewType.value = readLibraryViewType(KEY_DOWNLOADED_DRILLDOWN_SONGS_VIEW_TYPE, LibraryViewType.LIST)
         librarySort.value = prefs.getString(KEY_LIBRARY_SORT, null)
             ?.let { saved -> LibrarySort.entries.firstOrNull { it.name == saved } }
             ?: LibrarySort.DEFAULT
@@ -1296,14 +1316,64 @@ object AppSettings {
         ).apply()
     }
 
-    fun setLocalMusicViewType(value: LibraryViewType) {
+    fun setLocalSongsViewType(value: LibraryViewType) {
+        localSongsViewType.value = value
         localMusicViewType.value = value
-        prefs.edit().putString(KEY_LOCAL_MUSIC_VIEW_TYPE, value.name).apply()
+        prefs.edit().putString(KEY_LOCAL_SONGS_VIEW_TYPE, value.name).apply()
+    }
+
+    fun setLocalAlbumsViewType(value: LibraryViewType) {
+        localAlbumsViewType.value = value
+        prefs.edit().putString(KEY_LOCAL_ALBUMS_VIEW_TYPE, value.name).apply()
+    }
+
+    fun setLocalArtistsViewType(value: LibraryViewType) {
+        localArtistsViewType.value = value
+        prefs.edit().putString(KEY_LOCAL_ARTISTS_VIEW_TYPE, value.name).apply()
+    }
+
+    fun setLocalMusicViewType(value: LibraryViewType) {
+        setLocalSongsViewType(value)
+    }
+
+    fun setDownloadedSongsViewType(value: LibraryViewType) {
+        downloadedSongsViewType.value = value
+        downloadedMusicViewType.value = value
+        prefs.edit().putString(KEY_DOWNLOADED_SONGS_VIEW_TYPE, value.name).apply()
+    }
+
+    fun setDownloadedAlbumsViewType(value: LibraryViewType) {
+        downloadedAlbumsViewType.value = value
+        prefs.edit().putString(KEY_DOWNLOADED_ALBUMS_VIEW_TYPE, value.name).apply()
+    }
+
+    fun setDownloadedArtistsViewType(value: LibraryViewType) {
+        downloadedArtistsViewType.value = value
+        prefs.edit().putString(KEY_DOWNLOADED_ARTISTS_VIEW_TYPE, value.name).apply()
     }
 
     fun setDownloadedMusicViewType(value: LibraryViewType) {
-        downloadedMusicViewType.value = value
-        prefs.edit().putString(KEY_DOWNLOADED_MUSIC_VIEW_TYPE, value.name).apply()
+        setDownloadedSongsViewType(value)
+    }
+
+    fun setLibraryPlaylistsViewType(value: LibraryViewType) {
+        libraryPlaylistsViewType.value = value
+        prefs.edit().putString(KEY_LIBRARY_PLAYLISTS_VIEW_TYPE, value.name).apply()
+    }
+
+    fun setLibrarySongsViewType(value: LibraryViewType) {
+        librarySongsViewType.value = value
+        prefs.edit().putString(KEY_LIBRARY_SONGS_VIEW_TYPE, value.name).apply()
+    }
+
+    fun setLocalDrillDownSongsViewType(value: LibraryViewType) {
+        localDrillDownSongsViewType.value = value
+        prefs.edit().putString(KEY_LOCAL_DRILLDOWN_SONGS_VIEW_TYPE, value.name).apply()
+    }
+
+    fun setDownloadedDrillDownSongsViewType(value: LibraryViewType) {
+        downloadedDrillDownSongsViewType.value = value
+        prefs.edit().putString(KEY_DOWNLOADED_DRILLDOWN_SONGS_VIEW_TYPE, value.name).apply()
     }
 
 
@@ -1334,10 +1404,10 @@ object AppSettings {
             ?.let { saved -> ArtistSort.entries.firstOrNull { it.name == saved } }
             ?: ArtistSort.MOST_SONGS
 
-    private fun readLibraryViewType(key: String): LibraryViewType =
+    private fun readLibraryViewType(key: String, default: LibraryViewType = LibraryViewType.LIST): LibraryViewType =
         prefs.getString(key, null)
             ?.let { saved -> LibraryViewType.entries.firstOrNull { it.name == saved } }
-            ?: LibraryViewType.LIST
+            ?: default
 
     /**
      * Pins or unpins [browseId], returning whether it is pinned afterwards.
@@ -1565,7 +1635,17 @@ object AppSettings {
     private const val KEY_LIBRARY_SORT = "library_sort"
     private const val KEY_DETAIL_SONG_SORTS = "detail_song_sorts"
     private const val KEY_LOCAL_MUSIC_VIEW_TYPE = "local_music_view_type"
+    private const val KEY_LOCAL_SONGS_VIEW_TYPE = "local_songs_view_type"
+    private const val KEY_LOCAL_ALBUMS_VIEW_TYPE = "local_albums_view_type"
+    private const val KEY_LOCAL_ARTISTS_VIEW_TYPE = "local_artists_view_type"
     private const val KEY_DOWNLOADED_MUSIC_VIEW_TYPE = "downloaded_music_view_type"
+    private const val KEY_DOWNLOADED_SONGS_VIEW_TYPE = "downloaded_songs_view_type"
+    private const val KEY_DOWNLOADED_ALBUMS_VIEW_TYPE = "downloaded_albums_view_type"
+    private const val KEY_DOWNLOADED_ARTISTS_VIEW_TYPE = "downloaded_artists_view_type"
+    private const val KEY_LIBRARY_PLAYLISTS_VIEW_TYPE = "library_playlists_view_type"
+    private const val KEY_LIBRARY_SONGS_VIEW_TYPE = "library_songs_view_type"
+    private const val KEY_LOCAL_DRILLDOWN_SONGS_VIEW_TYPE = "local_drilldown_songs_view_type"
+    private const val KEY_DOWNLOADED_DRILLDOWN_SONGS_VIEW_TYPE = "downloaded_drilldown_songs_view_type"
     private const val KEY_BLACKLISTED_FOLDERS = "blacklisted_folders"
     private const val KEY_PINNED_PLAYLISTS = "pinned_playlists"
     private const val KEY_ALL_FILES_PERMISSION_ASKED = "all_files_permission_asked"

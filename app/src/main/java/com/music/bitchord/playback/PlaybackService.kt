@@ -616,6 +616,9 @@ class PlaybackService : MediaLibraryService() {
             val exoPlayer = player ?: return
             if (state == Player.STATE_ENDED) {
                 SleepTimer.cancel()
+                if (exoPlayer.repeatMode == Player.REPEAT_MODE_OFF || SingleSongPlaybackManager.enabled.value) {
+                    SingleSongPlaybackManager.triggerClosePlayer()
+                }
                 // The queue ran dry, so no transition will ever close the last
                 // track out. Without this its history entry keeps whatever
                 // watchtime the 30-second sampler happened to have reported and
@@ -1468,11 +1471,18 @@ class PlaybackService : MediaLibraryService() {
         // in between is Discord's own arithmetic.
         if (exoPlayer.isPlaying) pushDiscordPresence(exoPlayer)
 
-        // "Sleep after this song": the queue moving on by itself is the
-        // moment the track the user meant has finished. REPEAT counts
-        // too, or the timer would never fire with repeat-one on.
-        if (ended && SleepTimer.afterTrack.value) {
+        // If Repeat is OFF (not toggled), play only this song, then stop and close the player.
+        // If Repeat All or Repeat One is toggled, continuous playback proceeds.
+        val shouldStopAndClose = exoPlayer.repeatMode == Player.REPEAT_MODE_OFF || SingleSongPlaybackManager.enabled.value
+        if (ended && (SleepTimer.afterTrack.value || shouldStopAndClose)) {
             exoPlayer.pause()
+            if (shouldStopAndClose) {
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && exoPlayer.hasPreviousMediaItem()) {
+                    exoPlayer.seekToPreviousMediaItem()
+                    exoPlayer.pause()
+                }
+                SingleSongPlaybackManager.triggerClosePlayer()
+            }
             SleepTimer.cancel()
         }
         if (exoPlayer.isPlaying) registerCurrentPlay()

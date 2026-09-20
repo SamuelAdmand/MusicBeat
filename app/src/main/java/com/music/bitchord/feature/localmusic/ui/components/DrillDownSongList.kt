@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -83,42 +84,70 @@ fun DrillDownHeader(
             .padding(start = PAGE_GUTTER, end = PAGE_GUTTER, top = 8.dp, bottom = 12.dp),
     ) {
         val shape = if (isArtist) CircleShape else RoundedCornerShape(16.dp)
+        val isFavorites = label.equals("Favorites", ignoreCase = true) || artworkUrl == "favorites"
+
         Box(
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
                 .size(188.dp)
                 .clip(shape)
-                .background(MaterialTheme.colorScheme.secondaryContainer),
+                .background(
+                    if (isFavorites) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFFE91E63),
+                                Color(0xFF8E24AA),
+                                Color(0xFF3F51B5),
+                            ),
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.secondaryContainer,
+                                MaterialTheme.colorScheme.secondaryContainer,
+                            ),
+                        )
+                    },
+                ),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                imageVector = if (isArtist) Icons.Rounded.Person else Icons.Rounded.Album,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.size(64.dp),
-            )
-            val imageModel: Any? = if (isArtist) {
-                remember(label, artworkUrl) {
-                    ArtistImage(
-                        name = label,
-                        fallbackUrl = artworkUrl ?: songs.firstNotNullOfOrNull { it.thumbnailUrl },
-                        isLarge = true,
+            if (isFavorites) {
+                Icon(
+                    imageVector = BitChordIcons.HeartFilled,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.95f),
+                    modifier = Modifier.size(76.dp),
+                )
+            } else {
+                Icon(
+                    imageVector = if (isArtist) Icons.Rounded.Person else Icons.Rounded.Album,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(64.dp),
+                )
+                val imageModel: Any? = if (isArtist) {
+                    remember(label, artworkUrl) {
+                        ArtistImage(
+                            name = label,
+                            fallbackUrl = artworkUrl ?: songs.firstNotNullOfOrNull { it.thumbnailUrl },
+                            isLarge = true,
+                        )
+                    }
+                } else {
+                    (artworkUrl ?: songs.firstNotNullOfOrNull { it.thumbnailUrl })?.artworkAt(CARD_ART_PX)
+                }
+
+                if (imageModel != null) {
+                    AsyncImage(
+                        model = imageModel,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(shape)
+                            .then(if (isArtist) Modifier.thumbnailBorder(shape) else Modifier),
                     )
                 }
-            } else {
-                artworkUrl?.artworkAt(CARD_ART_PX)
-            }
-
-            if (imageModel != null) {
-                AsyncImage(
-                    model = imageModel,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(shape)
-                        .then(if (isArtist) Modifier.thumbnailBorder(shape) else Modifier),
-                )
             }
         }
         Spacer(Modifier.height(14.dp))
@@ -150,6 +179,8 @@ fun DrillDownHeader(
 @Composable
 fun DrillDownActionRow(
     songs: List<Song>,
+    viewType: LibraryViewType? = null,
+    onViewTypeToggle: (() -> Unit)? = null,
     onSongClick: (List<Song>, Int) -> Unit,
     onShuffle: (List<Song>) -> Unit,
     onMore: (() -> Unit)? = null,
@@ -205,6 +236,26 @@ fun DrillDownActionRow(
                 style = MaterialTheme.typography.titleMedium,
                 color = buttonContentColor,
             )
+        }
+        if (onViewTypeToggle != null && viewType != null) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(buttonBackground)
+                    .border(0.5.dp, buttonBorder, CircleShape)
+                    .clickable(onClick = onViewTypeToggle),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (viewType == LibraryViewType.GRID) BitChordIcons.ListView else BitChordIcons.GridView,
+                    contentDescription = stringResource(
+                        if (viewType == LibraryViewType.GRID) R.string.switch_to_list_view else R.string.switch_to_grid_view,
+                    ),
+                    tint = buttonContentColor,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
         if (onMore != null) {
             Box(
@@ -301,6 +352,7 @@ fun DrillDownSongList(
     songs: List<Song>,
     isArtist: Boolean = false,
     viewType: LibraryViewType = LibraryViewType.LIST,
+    onViewTypeToggle: (() -> Unit)? = null,
     selectedIds: Set<String> = emptySet(),
     currentSong: Song? = null,
     isPlaying: Boolean = false,
@@ -343,6 +395,8 @@ fun DrillDownSongList(
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     DrillDownActionRow(
                         songs = songs,
+                        viewType = viewType,
+                        onViewTypeToggle = onViewTypeToggle,
                         onSongClick = onSongClick,
                         onShuffle = onShuffle,
                         onMore = onMore,
@@ -389,6 +443,8 @@ fun DrillDownSongList(
                 item {
                     DrillDownActionRow(
                         songs = songs,
+                        viewType = viewType,
+                        onViewTypeToggle = onViewTypeToggle,
                         onSongClick = onSongClick,
                         onShuffle = onShuffle,
                         onMore = onMore,

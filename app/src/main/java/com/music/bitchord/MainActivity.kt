@@ -79,6 +79,8 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
 import com.music.bitchord.feature.localmusic.ui.components.LocalPermissionCard
+import androidx.compose.material.icons.rounded.LibraryMusic
+import com.music.bitchord.feature.library.ui.LibraryScreen
 import com.music.bitchord.ui.screens.LOCAL_TAB_SONGS
 import com.music.bitchord.ui.screens.LOCAL_TAB_ALBUMS
 import com.music.bitchord.ui.screens.LOCAL_TAB_ARTISTS
@@ -196,6 +198,7 @@ import com.music.bitchord.ui.icons.BitChordIcons
 import androidx.media3.common.Player
 import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.data.innertube.InnertubeParser
+import com.music.bitchord.playback.SingleSongPlaybackManager
 import com.music.bitchord.ui.player.NowPlayingScreen
 import com.music.bitchord.ui.player.dockedPlayerAvailable
 import com.music.bitchord.ui.player.dockedPlayerWidth
@@ -384,6 +387,12 @@ private fun BitChordApp(
         if (openPlayerRequested) {
             if (!playerDocked) showNowPlaying = true
             PlayerDeepLink.handled()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        SingleSongPlaybackManager.closePlayerEvent.collect {
+            showNowPlaying = false
         }
     }
 
@@ -659,14 +668,14 @@ private fun BitChordApp(
     val songsLabel = stringResource(R.string.songs)
     val albumsLabel = stringResource(R.string.albums)
     val artistsLabel = stringResource(R.string.artists)
-    val playlistsLabel = stringResource(R.string.playlists)
+    val libraryLabel = stringResource(R.string.library)
     val searchLabel = stringResource(R.string.search)
-    val tabs = remember(songsLabel, albumsLabel, artistsLabel, playlistsLabel, searchLabel) {
+    val tabs = remember(songsLabel, albumsLabel, artistsLabel, libraryLabel, searchLabel) {
         listOf(
             BottomTab(songsLabel, Icons.Rounded.MusicNote),
             BottomTab(albumsLabel, Icons.Rounded.Album),
             BottomTab(artistsLabel, Icons.Rounded.Person),
-            BottomTab(playlistsLabel, Icons.AutoMirrored.Rounded.QueueMusic),
+            BottomTab(libraryLabel, Icons.Rounded.LibraryMusic),
             BottomTab(searchLabel, BitChordIcons.Search),
         )
     }
@@ -1973,7 +1982,7 @@ private fun BitChordApp(
                                 onSongTagsOrLyricsSaved = { viewModel.reloadLyrics(it) },
                             )
                         }
-                        TAB_PLAYLISTS -> if (!hasStoragePermission) {
+                        TAB_LIBRARY -> if (!hasStoragePermission) {
                             Box(modifier = Modifier.fillMaxSize().padding(listPadding), contentAlignment = Alignment.Center) {
                                 LocalPermissionCard(
                                     onRequestPermission = requestDefaultPermission,
@@ -1981,14 +1990,10 @@ private fun BitChordApp(
                                 )
                             }
                         } else {
-                            LocalMusicScreen(
+                            LibraryScreen(
                                 songs = localSongs,
-                                collections = emptyList(),
-                                isDownloads = false,
                                 currentSong = player.song,
                                 isPlaying = player.isPlaying,
-                                isRefreshing = isRefreshingLocalMusic,
-                                onRefresh = { viewModel.loadLocalMusic(isPullToRefresh = true) },
                                 onSongClick = play,
                                 onSongLongPress = openSongMenu,
                                 onSongSwipe = onSongSwipe,
@@ -1996,22 +2001,7 @@ private fun BitChordApp(
                                     QueueShuffle.enableForNextQueue()
                                     play(songs, songs.indices.random())
                                 },
-                                emptyMessage = localEmptyMessage,
-                                onCollectionLongPress = { label, grouped ->
-                                    browseActions = BrowseTarget(
-                                        browseId = null,
-                                        title = label,
-                                        subtitle = grouped.firstOrNull()?.artist.orEmpty()
-                                            .takeUnless { it == label }
-                                            .orEmpty(),
-                                        thumbnailUrl = grouped.firstOrNull()?.thumbnailUrl,
-                                        songs = grouped,
-                                        downloadId = null,
-                                    )
-                                },
                                 contentPadding = listPadding,
-                                initialTab = LOCAL_TAB_PLAYLISTS,
-                                showTabRow = false,
                                 onPlayNext = playNext,
                                 onAddToQueue = addToQueue,
                                 onDeleteSong = { viewModel.loadLocalMusic() },
@@ -3111,7 +3101,7 @@ private val DETAIL_TITLE_DROP = 320.dp
 private const val TAB_SONGS = 0
 private const val TAB_ALBUMS = 1
 private const val TAB_ARTISTS = 2
-private const val TAB_PLAYLISTS = 3
+private const val TAB_LIBRARY = 3
 private const val TAB_SEARCH = 4
 
 
