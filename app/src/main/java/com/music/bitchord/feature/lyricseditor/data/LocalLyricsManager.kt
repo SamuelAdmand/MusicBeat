@@ -217,30 +217,32 @@ object LocalLyricsManager {
                     }
                 } else {
                     jobs += async {
-                        val lines = runCatching {
-                            LyricsRepository.fetch(
-                                source = source,
-                                videoId = "",
-                                title = title,
-                                artist = primaryArtist.ifBlank { normalizedArtist },
-                                durationMs = durationMs,
-                                album = album,
-                            )
-                        }.getOrNull()
-                        if (!lines.isNullOrEmpty()) {
-                            listOf(
-                                LyricsSearchResultItem(
-                                    id = "${source.id}_${System.currentTimeMillis()}",
+                        // Try searchLyrics first (multi-result) for extensions that support it
+                        val ext = com.music.bitchord.feature.lyrics.manager.LyricsExtensionManager.getExtension(source.id)
+                        if (ext != null && ext.scriptFile.exists()) {
+                            val searchJson = runCatching {
+                                com.music.bitchord.feature.lyrics.engine.LyricsExtensionExecutor.searchLyrics(
+                                    extensionId = ext.id,
+                                    scriptFile = ext.scriptFile,
                                     title = title,
-                                    artist = artist,
+                                    artist = primaryArtist.ifBlank { normalizedArtist },
                                     album = album,
-                                    durationSeconds = (durationMs / 1000).toInt(),
-                                    provider = source.label,
-                                    syncedLyrics = lines.toLrc(),
-                                    plainLyrics = lines.joinToString("\n") { it.text },
                                 )
-                            )
-                        } else emptyList()
+                            }.getOrNull()
+
+                            val parsed = if (!searchJson.isNullOrBlank()) {
+                                parseExtensionSearchResults(searchJson, source.label)
+                            } else emptyList()
+
+                            if (parsed.isNotEmpty()) {
+                                parsed
+                            } else {
+                                // Fallback: use getLyrics for a single result
+                                fetchSingleResult(source, title, artist, primaryArtist, normalizedArtist, durationMs, album)
+                            }
+                        } else {
+                            fetchSingleResult(source, title, artist, primaryArtist, normalizedArtist, durationMs, album)
+                        }
                     }
                 }
             }
@@ -253,6 +255,77 @@ object LocalLyricsManager {
 
         results
     }
+
+    /**
+     * Fallback path: calls [LyricsRepository.fetch] (getLyrics) and wraps
+     * the single result into a one-element list for the search results dialog.
+     */
+    private suspend fun fetchSingleResult(
+        source: LyricsSource,
+        title: String,
+        artist: String,
+        primaryArtist: String,
+        normalizedArtist: String,
+        durationMs: Long,
+        album: String?,
+    ): List<LyricsSearchResultItem> {
+        val lines = runCatching {
+            LyricsRepository.fetch(
+                source = source,
+                videoId = "",
+                title = title,
+                artist = primaryArtist.ifBlank { normalizedArtist },
+                durationMs = durationMs,
+                album = album,
+            )
+        }.getOrNull()
+        return if (!lines.isNullOrEmpty()) {
+            listOf(
+                LyricsSearchResultItem(
+                    id = "${source.id}_${System.currentTimeMillis()}",
+                    title = title,
+                    artist = artist,
+                    album = album,
+                    durationSeconds = (durationMs / 1000).toInt(),
+                    provider = source.label,
+                    syncedLyrics = lines.toLrc(),
+                    plainLyrics = lines.joinToString("\n") { it.text },
+                )
+            )
+        } else emptyList()
+    }
+
+    /**
+     * Parses the JSON array returned by [LyricsExtensionExecutor.searchLyrics].
+     *
+     * Each element is expected to have:
+     * `{ id, title, artist, album?, durationSeconds?, provider?,
+     *    syncedLyrics?, plainLyrics? }`
+     */
+    private fun parseExtensionSearchResults(
+        jsonString: String,
+        fallbackProvider: String,
+    ): List<LyricsSearchResultItem> = runCatching {
+        val array = json.parseToJsonElement(jsonString) as? JsonArray ?: return emptyList()
+        array.mapNotNull { element ->
+            val obj = element as? JsonObject ?: return@mapNotNull null
+            val id = obj["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val synced = obj["syncedLyrics"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+            val plain = obj["plainLyrics"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+            if (synced == null && plain == null) return@mapNotNull null
+
+            LyricsSearchResultItem(
+                id = id,
+                title = obj["title"]?.jsonPrimitive?.contentOrNull ?: "",
+                artist = obj["artist"]?.jsonPrimitive?.contentOrNull ?: "",
+                album = obj["album"]?.jsonPrimitive?.contentOrNull,
+                durationSeconds = obj["durationSeconds"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0,
+                provider = obj["provider"]?.jsonPrimitive?.contentOrNull ?: fallbackProvider,
+                syncedLyrics = synced,
+                plainLyrics = plain,
+            )
+        }
+    }.getOrDefault(emptyList())
 
     private fun searchLrcLib(title: String, artist: String, album: String?): List<LyricsSearchResultItem> {
         val primaryArtist = cleanArtistForSearch(artist)
