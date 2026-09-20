@@ -1,94 +1,73 @@
 package com.music.bitchord.ui.components
 
-import com.music.bitchord.R
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.DragHandle
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.launch
-import com.music.bitchord.feature.lyrics.manager.LyricsExtensionManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.music.bitchord.R
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.settings.AppSettings
+import com.music.bitchord.feature.lyrics.manager.LyricsExtensionManager
+import com.music.bitchord.ui.components.lyrics.LyricsExtensionSyncHeader
+import com.music.bitchord.ui.components.lyrics.LyricsSourceItemCard
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlinx.coroutines.launch
+
+private const val SWAP_THRESHOLD = 0.6f
 
 /**
- * Which lyric databases the player is allowed to ask.
- *
- * Same frosted iOS alert as other system alerts, down to the shared
- * [ALERT_WIDTH]/[ALERT_CORNER] metrics and hairline [AlertRule]s, with the
- * action rows swapped for checkable ones. Checkmarks rather than Material
- * checkboxes: that is what a multiple-selection list looks like in this
- * lineage, and a column of square boxes would be the one Material thing left
- * on an otherwise Apple-shaped alert.
- *
- * The order shown is the order they are tried, and it is the user's to set:
- * drag a row by its handle to move it, which reorders independently of
- * whether the row is ticked — priority and participation are different
- * questions, and this is the one dialog for both.
+ * Modern dialog for ordering and enabling lyrics extensions.
+ * Provides live GitHub sync, drag-and-drop reordering, and syllable sync toggling.
  */
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
@@ -101,21 +80,18 @@ fun LyricsSourcesDialog(
     val selected by AppSettings.lyricsSources.collectAsStateWithLifecycle()
     val savedOrder by AppSettings.lyricsSourceOrder.collectAsStateWithLifecycle()
     val prioritizeSyllableSync by AppSettings.prioritizeSyllableSync.collectAsStateWithLifecycle()
-    val paxSenixApiKey by AppSettings.paxSenixApiKey.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val isSyncing by LyricsExtensionManager.isSyncing.collectAsStateWithLifecycle()
     val syncMessage by LyricsExtensionManager.syncMessage.collectAsStateWithLifecycle()
-    var showPaxSenixKeyDialog by remember { mutableStateOf(false) }
     var showRepoSettingsDialog by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(ALERT_CORNER)
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(SCRIM_COLOR)
             .safeDrawingPadding()
-            .padding(vertical = 16.dp)
+            .padding(horizontal = 16.dp, vertical = 24.dp)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
@@ -125,8 +101,10 @@ fun LyricsSourcesDialog(
     ) {
         Column(
             modifier = Modifier
-                .width(ALERT_WIDTH)
-                .clip(shape)
+                .widthIn(max = 420.dp)
+                .fillMaxWidth()
+                .heightIn(max = 680.dp)
+                .clip(RoundedCornerShape(28.dp))
                 .then(
                     if (reduceDynamicBlur) {
                         Modifier.background(MaterialTheme.colorScheme.surface)
@@ -137,102 +115,129 @@ fun LyricsSourcesDialog(
                         )
                     },
                 )
-                // Swallows the tap before it reaches the scrim behind, so
-                // touching the card itself never dismisses it.
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
                     onClick = {},
                 ),
         ) {
-            Column(
+            // 1. Header with title, description, and close button
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 19.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    .padding(top = 18.dp, start = 20.dp, end = 16.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = stringResource(R.string.lyrics_sources),
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.W600,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    text = stringResource(R.string.lyrics_sources_order),
-                    modifier = Modifier.padding(top = 4.dp),
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 13.sp,
-                        lineHeight = 17.sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.lyrics_sources),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.lyrics_sources_order),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Close",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
 
-            // Capped and scrolled rather than laid out at full height: there
-            // are enough providers now that the card ran off both ends of a
-            // phone, taking Reset and Done with it. Still a plain Column
-            // inside — the drag measures itself against a fixed row pitch and
-            // a lazy list would recycle the row being dragged out from under
-            // the finger.
-            Box(
-                modifier = Modifier
-                    .heightIn(max = SOURCES_MAX_HEIGHT)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                ReorderableSourceList(
-                    order = savedOrder,
-                    selected = selected,
-                    onReorder = AppSettings::setLyricsSourceOrder,
-                    onToggle = { source ->
-                        val checked = source in selected
-                        // The last one standing can't be unchecked — an empty list
-                        // is indistinguishable from switching lyrics off, and there
-                        // is already a switch for that a row above this dialog.
-                        if (checked && selected.size <= 1) return@ReorderableSourceList
-                        AppSettings.setLyricsSources(
-                            if (checked) selected - source else selected + source,
-                        )
-                    },
-                )
-            }
-
-            AlertRule()
-            PaxSenixApiKeyRow(
-                isConfigured = paxSenixApiKey.isNotBlank(),
-                onClick = { showPaxSenixKeyDialog = true },
-            )
-            AlertRule()
-            LyricsUpdateSourcesRow(
+            // 2. Extension Sync & Update Banner
+            LyricsExtensionSyncHeader(
+                extensionCount = savedOrder.size,
                 isSyncing = isSyncing,
                 syncMessage = syncMessage,
-                onClick = {
+                onSyncClick = {
                     scope.launch {
                         LyricsExtensionManager.syncFromRepository(context, force = true)
                     }
                 },
-            )
-            AlertRule()
-            LyricsExtensionRepoRow(
-                onClick = { showRepoSettingsDialog = true },
-            )
-            AlertRule()
-            SyllableSyncToggle(
-                checked = prioritizeSyllableSync,
-                onToggle = { AppSettings.setPrioritizeSyllableSync(!prioritizeSyllableSync) },
+                onSettingsClick = { showRepoSettingsDialog = true },
             )
 
-            AlertRule()
-            AlertAction(
-                label = stringResource(R.string.reset_to_default),
-                emphasised = false,
-                onClick = AppSettings::resetLyricsSourceSettings,
-            )
-            AlertRule()
-            AlertAction(label = stringResource(R.string.done), emphasised = true, onClick = onDismiss)
+            // 3. Scrollable Sources & Syllable Sync Toggle
+            Box(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Column(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                ) {
+                    ReorderableSourceList(
+                        order = savedOrder,
+                        selected = selected,
+                        onReorder = AppSettings::setLyricsSourceOrder,
+                        onToggle = { source ->
+                            val checked = source in selected
+                            if (checked && selected.size <= 1) return@ReorderableSourceList
+                            AppSettings.setLyricsSources(
+                                if (checked) selected - source else selected + source,
+                            )
+                        },
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    ModernSyllableSyncCard(
+                        checked = prioritizeSyllableSync,
+                        onToggle = { AppSettings.setPrioritizeSyllableSync(!prioritizeSyllableSync) },
+                    )
+                }
+            }
+
+            // 4. Fixed Bottom Action Bar
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(
+                        onClick = AppSettings::resetLyricsSourceSettings,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.reset_to_default),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+
+                    FilledTonalButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.done),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -242,325 +247,61 @@ fun LyricsSourcesDialog(
             onDismiss = { showRepoSettingsDialog = false },
         )
     }
-
-    if (showPaxSenixKeyDialog) {
-        var input by remember(paxSenixApiKey) { mutableStateOf(paxSenixApiKey) }
-        var passwordVisible by remember { mutableStateOf(false) }
-
-        AlertDialog(
-            onDismissRequest = { showPaxSenixKeyDialog = false },
-            shape = RoundedCornerShape(20.dp),
-            title = {
-                Text(
-                    text = stringResource(R.string.paxsenix_api_key),
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                )
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = stringResource(R.string.paxsenix_api_key_dialog_description),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 18.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    OutlinedTextField(
-                        value = input,
-                        onValueChange = { input = it },
-                        singleLine = true,
-                        placeholder = {
-                            Text(
-                                text = stringResource(R.string.paxsenix_api_key_placeholder),
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                            )
-                        },
-                        supportingText = {
-                            Text(
-                                text = stringResource(R.string.paxsenix_api_key_helper),
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Done,
-                        ),
-                        trailingIcon = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (input.isNotEmpty()) {
-                                    IconButton(
-                                        onClick = { input = "" },
-                                        modifier = Modifier.size(36.dp),
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Close,
-                                            contentDescription = stringResource(R.string.clear),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    }
-                                }
-                                IconButton(
-                                    onClick = { passwordVisible = !passwordVisible },
-                                    modifier = Modifier.size(36.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = if (passwordVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                                        contentDescription = if (passwordVisible) "Hide API key" else "Show API key",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                            cursorColor = MaterialTheme.colorScheme.primary,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    AppSettings.setPaxSenixApiKey(input.trim())
-                    showPaxSenixKeyDialog = false
-                }) {
-                    Text(
-                        text = stringResource(R.string.save),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPaxSenixKeyDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-        )
-    }
-}
-
-@Composable
-private fun LyricsUpdateSourcesRow(
-    isSyncing: Boolean,
-    syncMessage: String?,
-    onClick: () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = ACTION_HEIGHT)
-            .background(
-                if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f) else Color.Transparent,
-            )
-            .clickable(
-                indication = null,
-                enabled = !isSyncing,
-                interactionSource = interactionSource,
-                onClick = onClick,
-            )
-            .padding(horizontal = 16.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = "Update Sources",
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = if (isSyncing) (syncMessage ?: "Syncing from GitHub...") else (syncMessage ?: "Check for extension updates from GitHub"),
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(Modifier.width(10.dp))
-        if (isSyncing) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Rounded.Refresh,
-                contentDescription = "Update Sources",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun LyricsExtensionRepoRow(
-    onClick: () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = ACTION_HEIGHT)
-            .background(
-                if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f) else Color.Transparent,
-            )
-            .clickable(
-                indication = null,
-                interactionSource = interactionSource,
-                onClick = onClick,
-            )
-            .padding(horizontal = 16.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = "Extension Repository Settings",
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = "Configure GitHub repo URL & auto-update",
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-            )
-        }
-        Spacer(Modifier.width(10.dp))
-        Icon(
-            imageVector = Icons.Rounded.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
-            modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
-@Composable
-private fun PaxSenixApiKeyRow(
-    isConfigured: Boolean,
-    onClick: () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = ACTION_HEIGHT)
-            .background(
-                if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f) else Color.Transparent,
-            )
-            .clickable(
-                indication = null,
-                interactionSource = interactionSource,
-                onClick = onClick,
-            )
-            .padding(horizontal = 16.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.paxsenix_api_key),
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = if (isConfigured) {
-                    stringResource(R.string.paxsenix_api_key_configured_subtitle)
-                } else {
-                    stringResource(R.string.paxsenix_api_key_missing_subtitle)
-                },
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-            )
-        }
-        Spacer(Modifier.width(10.dp))
-        Icon(
-            imageVector = if (isConfigured) Icons.Rounded.Check else Icons.Rounded.ChevronRight,
-            contentDescription = null,
-            tint = if (isConfigured) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
-            modifier = Modifier.size(19.dp),
-        )
-    }
 }
 
 /**
- * Whether a merely line-synced answer is good enough on its own, or worth
- * holding out on for a word-synced one further down the priority order —
- * see the note on [AppSettings.prioritizeSyllableSync]. A single row rather
- * than one more entry in the checkable list above: this isn't a source to
- * ask or not, it's a rule about what to do once one has answered.
+ * Modern card for prioritizing word-synced lyrics over line-synced ones.
  */
 @Composable
-private fun SyllableSyncToggle(checked: Boolean, onToggle: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    Row(
-        modifier = Modifier
+private fun ModernSyllableSyncCard(
+    checked: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = ACTION_HEIGHT)
-            .background(
-                if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f) else Color.Transparent,
-            )
-            .clickable(
-                indication = null,
-                interactionSource = interactionSource,
-                onClick = onToggle,
-            )
-            .padding(horizontal = 16.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onToggle),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.prioritize_syllable_lyrics),
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.prioritize_syllable_lyrics_subtitle),
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-            )
-        }
-        Spacer(Modifier.width(10.dp))
-        if (checked) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = stringResource(R.string.enabled),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(19.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.prioritize_syllable_lyrics),
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.prioritize_syllable_lyrics_subtitle),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            Switch(
+                checked = checked,
+                onCheckedChange = { onToggle() },
             )
         }
     }
 }
 
 /**
- * The checkable, drag-reorderable list of sources.
- *
- * Reordering is entirely local until a drag ends — [liveOrder] tracks the
- * list as rows are dragged past each other, and only the finished order is
- * written back through [onReorder]. Writing on every intermediate swap would
- * mean [AppSettings] round-tripping the list back down through
- * [savedOrder][AppSettings.lyricsSourceOrder] on every frame of a drag, fighting
- * the gesture that produced it.
- *
- * The drag keeps exactly two numbers: how far the finger has come since it
- * went down ([totalDrag]), and which slot it went down on ([startIndex]).
- * Where to draw the row and which slot it belongs in are both *derived* from
- * those, so neither can drift from the other however many swaps happen on the
- * way. See [SWAP_THRESHOLD] for why the crossing point is past the halfway
- * mark rather than on it.
+ * Modern checkable and drag-reorderable list of lyrics sources.
  */
 @Composable
 private fun ReorderableSourceList(
@@ -571,61 +312,25 @@ private fun ReorderableSourceList(
 ) {
     var liveOrder by remember(order) { mutableStateOf(order) }
     var draggedSource by remember { mutableStateOf<LyricsSource?>(null) }
-
-    /** Distance the finger has covered since this gesture began, in pixels. */
     var totalDrag by remember { mutableStateOf(0f) }
-
-    /** Which slot of [liveOrder] it began on. */
     var startIndex by remember { mutableStateOf(0) }
-
-    // The distance from one row's top to the next one's — which is the row
-    // *plus* the hairline above it, not the row alone. Measured off a wrapper
-    // holding both, because measuring the row by itself left every swap
-    // short by the width of a rule and the error compounded down the list.
-    //
-    // All the rows are the same height by construction (one line of label,
-    // one of detail, both capped), so whichever reports last is as good as
-    // any other; [lockedPitchPx] then freezes it for the duration of a
-    // gesture, so a relayout mid-drag can't move the boundaries the drag is
-    // being measured against underneath it.
     var pitchPx by remember { mutableStateOf(0f) }
     var lockedPitchPx by remember { mutableStateOf(0f) }
 
     Column {
         liveOrder.forEach { source ->
-            // Without this, Compose matches each row to its slot by position
-            // rather than by which source it is — so the instant a swap moved
-            // a different [LyricsSource] into the slot the finger was on,
-            // that slot's `pointerInput` saw its key change and restarted the
-            // coroutine mid-gesture, which is indistinguishable from letting
-            // go: the touch kept moving but nothing was listening anymore,
-            // and the drag stalled one swap after it started. Keying the
-            // whole row on the value it represents is what keeps *this
-            // composable*, gesture and all, following that value from slot to
-            // slot instead of being torn down and rebuilt in place.
             key(source) {
                 val checked = source in selected
-                // The last one enabled can't be unticked — see the guard in
-                // [onToggle] — so it reads the same disabled way the toggle
-                // itself already treats it, rather than looking clickable and
-                // silently doing nothing.
                 val toggleable = !checked || selected.size > 1
                 val dragging = source == draggedSource
-                Column(
+                val ext = LyricsExtensionManager.getExtension(source.id)
+
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .zIndex(if (dragging) 1f else 0f)
                         .onSizeChanged { pitchPx = it.height.toFloat() }
                         .graphicsLayer {
-                            // Read here rather than in composition: this runs
-                            // once a frame in the draw phase, so a drag moves
-                            // the row without recomposing the list at all.
-                            //
-                            // The row sits wherever the finger has carried it
-                            // from where it was picked up, less whatever the
-                            // swaps have already moved its slot — so a swap
-                            // relocates the slot and shortens this offset by
-                            // exactly as much, and the row does not budge.
                             translationY = if (dragging) {
                                 totalDrag - (liveOrder.indexOf(source) - startIndex) * lockedPitchPx
                             } else {
@@ -633,151 +338,66 @@ private fun ReorderableSourceList(
                             }
                         },
                 ) {
-                    AlertRule()
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = ACTION_HEIGHT)
-                            .clickable(
-                                enabled = toggleable,
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() },
-                                onClick = { onToggle(source) },
-                            )
-                            .padding(start = 4.dp, end = 16.dp, top = 9.dp, bottom = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.DragHandle,
-                            contentDescription = stringResource(R.string.drag_to_reorder),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
-                            modifier = Modifier
-                                .padding(horizontal = 6.dp)
-                                .size(18.dp)
-                                // A constant key on purpose — see the note above.
-                                // The row this coroutine belongs to is now pinned
-                                // by [key], so nothing about a reorder should ever
-                                // restart it; only the handle's own identity
-                                // (there is exactly one, for its whole lifetime)
-                                // needs to.
-                                .pointerInput(Unit) {
-                                    detectDragGestures(
-                                        onDragStart = {
-                                            draggedSource = source
-                                            totalDrag = 0f
-                                            startIndex = liveOrder.indexOf(source)
-                                            lockedPitchPx = pitchPx
-                                        },
-                                        onDrag = { change, delta ->
-                                            change.consume()
-                                            val pitch = lockedPitchPx
-                                            if (pitch <= 0f) return@detectDragGestures
-                                            var index = liveOrder.indexOf(source)
-                                            if (index < 0) return@detectDragGestures
-
-                                            // Held past either end the row stops
-                                            // there under the finger, rather than
-                                            // running off the list and having to
-                                            // be dragged all the way back before
-                                            // it answers again.
-                                            totalDrag = (totalDrag + delta.y).coerceIn(
-                                                -startIndex * pitch,
-                                                (liveOrder.lastIndex - startIndex) * pitch,
-                                            )
-
-                                            // A loop, not an `if`: one pointer
-                                            // event can cover several rows when
-                                            // the finger is quick, and settling
-                                            // one row per event would leave the
-                                            // list trailing the drag.
-                                            while (true) {
-                                                val travelled = totalDrag / pitch
-                                                val moved = (index - startIndex).toFloat()
-                                                if (travelled > moved + SWAP_THRESHOLD && index < liveOrder.lastIndex) {
-                                                    liveOrder = liveOrder.toMutableList().apply {
-                                                        add(index + 1, removeAt(index))
-                                                    }
-                                                    index++
-                                                } else if (travelled < moved - SWAP_THRESHOLD && index > 0) {
-                                                    liveOrder = liveOrder.toMutableList().apply {
-                                                        add(index - 1, removeAt(index))
-                                                    }
-                                                    index--
-                                                } else {
-                                                    break
-                                                }
-                                            }
-                                        },
-                                        onDragEnd = {
-                                            draggedSource = null
-                                            totalDrag = 0f
-                                            onReorder(liveOrder)
-                                        },
-                                        onDragCancel = {
-                                            draggedSource = null
-                                            totalDrag = 0f
-                                            liveOrder = order
-                                        },
-                                    )
+                    LyricsSourceItemCard(
+                        source = source,
+                        selected = checked,
+                        toggleable = toggleable,
+                        isDragging = dragging,
+                        version = ext?.version,
+                        onToggle = { onToggle(source) },
+                        dragModifier = Modifier.pointerInput(Unit) {
+                            detectDragGestures(
+                                onDragStart = {
+                                    draggedSource = source
+                                    totalDrag = 0f
+                                    startIndex = liveOrder.indexOf(source)
+                                    lockedPitchPx = pitchPx
                                 },
-                        )
-                        Column(Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = source.label,
-                                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                        .copy(alpha = if (toggleable) 1f else 0.5f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                val ext = com.music.bitchord.feature.lyrics.manager.LyricsExtensionManager.getExtension(source.extensionId)
-                                if (ext != null) {
-                                    Text(
-                                        text = "  v${ext.version}",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                onDrag = { change, delta ->
+                                    change.consume()
+                                    val pitch = lockedPitchPx
+                                    if (pitch <= 0f) return@detectDragGestures
+                                    var index = liveOrder.indexOf(source)
+                                    if (index < 0) return@detectDragGestures
+
+                                    totalDrag = (totalDrag + delta.y).coerceIn(
+                                        -startIndex * pitch,
+                                        (liveOrder.lastIndex - startIndex) * pitch,
                                     )
-                                }
-                            }
-                            Text(
-                                text = source.detail,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+
+                                    while (true) {
+                                        val travelled = totalDrag / pitch
+                                        val moved = (index - startIndex).toFloat()
+                                        if (travelled > moved + SWAP_THRESHOLD && index < liveOrder.lastIndex) {
+                                            liveOrder = liveOrder.toMutableList().apply {
+                                                add(index + 1, removeAt(index))
+                                            }
+                                            index++
+                                        } else if (travelled < moved - SWAP_THRESHOLD && index > 0) {
+                                            liveOrder = liveOrder.toMutableList().apply {
+                                                add(index - 1, removeAt(index))
+                                            }
+                                            index--
+                                        } else {
+                                            break
+                                        }
+                                    }
+                                },
+                                onDragEnd = {
+                                    draggedSource = null
+                                    totalDrag = 0f
+                                    onReorder(liveOrder)
+                                },
+                                onDragCancel = {
+                                    draggedSource = null
+                                    totalDrag = 0f
+                                    liveOrder = order
+                                },
                             )
-                        }
-                        Spacer(Modifier.width(10.dp))
-                        if (checked) {
-                            Icon(
-                                imageVector = Icons.Rounded.Check,
-                                contentDescription = stringResource(R.string.enabled),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(19.dp),
-                            )
-                        }
-                    }
+                        },
+                    )
                 }
             }
         }
     }
 }
-
-/**
- * How far past a neighbour the finger has to carry a row before the two trade
- * places, as a share of one row's pitch.
- *
- * Deliberately more than half. At exactly half, a row that has just swapped
- * lands with its offset sitting precisely on the boundary of swapping *back* —
- * so a single pixel of the shake any real finger has flipped it, and the
- * compensating shift put it straight back on the forward boundary again. The
- * row juddered between two slots for as long as it was held near a crossing,
- * which is the "loops up and down in the same position" this fixes. Anything
- * over half opens a gap between the two boundaries; a tenth of a row is enough
- * to swallow the shake without the swap feeling reluctant.
- */
-private const val SWAP_THRESHOLD = 0.6f
-
-/** How tall the source list may get before it scrolls inside the card. */
-private val SOURCES_MAX_HEIGHT = 340.dp
