@@ -446,6 +446,7 @@ fun Song.toMediaItem(): MediaItem {
     // that has become stale since it was created. Checking only the lookup
     // leaves that path unguarded.
     val offlineUri = localUri?.takeUnless(Downloads::isMissingLocalFile)
+        ?: localPath?.takeIf { java.io.File(it).exists() }?.let { android.net.Uri.fromFile(java.io.File(it)).toString() }
         ?: Downloads.verifiedSavedUri(videoId)
     val uriString = offlineUri ?: when {
         videoId.startsWith("content://") || videoId.startsWith("file://") -> videoId

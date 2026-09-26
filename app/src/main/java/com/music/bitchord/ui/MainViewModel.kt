@@ -1869,6 +1869,51 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
+    fun openLocalAlbum(
+        albumName: String,
+        artist: String = "",
+        thumbnailUrl: String? = null,
+        songs: List<Song> = emptyList(),
+    ) {
+        val albumSongs = if (songs.isNotEmpty()) {
+            songs
+        } else {
+            val allSongs = (_localSongs.value as? UiState.Success)?.data.orEmpty()
+            allSongs.filter { it.albumName.equals(albumName, ignoreCase = true) }
+        }
+        _detailStack.value += DetailPage(
+            browseId = "local:album:$albumName",
+            title = albumName,
+            subtitle = artist,
+            thumbnailUrl = thumbnailUrl,
+            songs = UiState.Success(albumSongs),
+            type = BrowseType.ALBUM,
+        )
+    }
+
+    fun openLocalArtist(
+        artistName: String,
+        thumbnailUrl: String? = null,
+        songs: List<Song> = emptyList(),
+    ) {
+        val artistSongs = if (songs.isNotEmpty()) {
+            songs
+        } else {
+            val allSongs = (_localSongs.value as? UiState.Success)?.data.orEmpty()
+            allSongs.filter {
+                com.music.bitchord.feature.artistimage.util.ArtistSplitter.matchesArtist(it.artist, artistName)
+            }
+        }
+        _detailStack.value += DetailPage(
+            browseId = "local:artist:$artistName",
+            title = artistName,
+            subtitle = "Artist",
+            thumbnailUrl = thumbnailUrl,
+            songs = UiState.Success(artistSongs),
+            type = BrowseType.ARTIST,
+        )
+    }
+
     fun openDetail(
         browseId: String,
         title: String,
@@ -1877,12 +1922,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         type: BrowseType = BrowseType.OTHER,
     ) {
         val resolved = browseTypeOf(browseId, type)
+        val cachedLocal = (_localSongs.value as? UiState.Success)?.data
+        val initialSongs: UiState<List<Song>> = when {
+            browseId.startsWith("local:album:") || resolved == BrowseType.ALBUM -> {
+                val album = if (browseId.startsWith("local:album:")) browseId.removePrefix("local:album:") else title
+                val songs = cachedLocal?.filter { it.albumName.equals(album, ignoreCase = true) }
+                if (!songs.isNullOrEmpty()) UiState.Success(songs) else UiState.Loading
+            }
+            browseId.startsWith("local:artist:") || resolved == BrowseType.ARTIST -> {
+                val artist = if (browseId.startsWith("local:artist:")) browseId.removePrefix("local:artist:") else title
+                val songs = cachedLocal?.filter { com.music.bitchord.feature.artistimage.util.ArtistSplitter.matchesArtist(it.artist, artist) }
+                if (!songs.isNullOrEmpty()) UiState.Success(songs) else UiState.Loading
+            }
+            else -> UiState.Loading
+        }
+        val initialArt: String? = thumbnailUrl ?: (initialSongs as? UiState.Success)?.data?.firstNotNullOfOrNull { it.thumbnailUrl?.takeIf { u -> u.isNotBlank() } }
+
         _detailStack.value += DetailPage(
             browseId = browseId,
             title = title,
             subtitle = subtitle,
-            thumbnailUrl = thumbnailUrl,
-            songs = UiState.Loading,
+            thumbnailUrl = initialArt,
+            songs = initialSongs,
             type = resolved,
         )
         viewModelScope.launch {
@@ -1936,61 +1997,48 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         else UiState.Success(songs)
                     }
                 }
+                browseId.startsWith("local:album:") -> {
+                    val albumName = browseId.removePrefix("local:album:")
+                    val context = getApplication<Application>()
+                    val allSongs = (_localSongs.value as? UiState.Success)?.data
+                        ?: LocalMediaRepository.getLocalMusic(context)
+                    val albumSongs = allSongs.filter { it.albumName.equals(albumName, ignoreCase = true) }
+                    if (albumSongs.isEmpty()) UiState.Error("No tracks found for this album")
+                    else UiState.Success(albumSongs)
+                }
+                browseId.startsWith("local:artist:") -> {
+                    val artistName = browseId.removePrefix("local:artist:")
+                    val context = getApplication<Application>()
+                    val allSongs = (_localSongs.value as? UiState.Success)?.data
+                        ?: LocalMediaRepository.getLocalMusic(context)
+                    val artistSongs = allSongs.filter {
+                        com.music.bitchord.feature.artistimage.util.ArtistSplitter.matchesArtist(it.artist, artistName)
+                    }
+                    if (artistSongs.isEmpty()) UiState.Error("No tracks found for this artist")
+                    else UiState.Success(artistSongs)
+                }
                 resolved == BrowseType.ARTIST -> {
-                    YtMusicRepository.artistPage(browseId).fold(
-                        onSuccess = { page ->
-                            sections = page.sections
-                            artwork = page.thumbnailUrl
-                            name = page.name
-                            description = page.description
-                            subscriberCountText = page.subscriberCountText
-                            monthlyListenerCount = page.monthlyListenerCount
-                            subscription = page.subscription
-                            if (page.songs.isEmpty()) {
-                                UiState.Error(text(R.string.no_tracks_here))
-                            } else {
-                                UiState.Success(page.songs.withArtwork(thumbnailUrl ?: artwork))
-                            }
-                        },
-                        onFailure = { UiState.Error(it.friendly()) },
-                    )
+                    val artistName = title.ifBlank { browseId.removePrefix("local:artist:") }
+                    val context = getApplication<Application>()
+                    val allSongs = (_localSongs.value as? UiState.Success)?.data
+                        ?: LocalMediaRepository.getLocalMusic(context)
+                    val artistSongs = allSongs.filter {
+                        com.music.bitchord.feature.artistimage.util.ArtistSplitter.matchesArtist(it.artist, artistName)
+                    }
+                    if (artistSongs.isEmpty()) UiState.Error("No tracks found for this artist")
+                    else UiState.Success(artistSongs)
+                }
+                resolved == BrowseType.ALBUM -> {
+                    val albumName = title.ifBlank { browseId.removePrefix("local:album:") }
+                    val context = getApplication<Application>()
+                    val allSongs = (_localSongs.value as? UiState.Success)?.data
+                        ?: LocalMediaRepository.getLocalMusic(context)
+                    val albumSongs = allSongs.filter { it.albumName.equals(albumName, ignoreCase = true) }
+                    if (albumSongs.isEmpty()) UiState.Error("No tracks found for this album")
+                    else UiState.Success(albumSongs)
                 }
                 else -> {
-                    YtMusicRepository.browseSongs(browseId).fold(
-                        onSuccess = { page ->
-                            // Free here — the page that returned these rows is
-                            // the one thing that states who made the playlist,
-                            // so its own menu never has to go and ask. Recorded
-                            // even when the listing came back empty.
-                            page.owned?.let { setPlaylistOwned(browseId, it) }
-                            // Only for the caller that had nothing: a card's own
-                            // title is what the user just tapped, and must not
-                            // be swapped for the header's wording underneath them.
-                            page.header?.let { header ->
-                                if (title.isBlank()) name = header.title
-                                // Album cards often only carry the artist, while
-                                // the page header also carries the release year.
-                                // Prefer that richer line so the year appears
-                                // directly below the artist on the album page.
-                                if (resolved == BrowseType.ALBUM && header.subtitle.isNotBlank()) {
-                                    credit = header.subtitle
-                                } else if (subtitle.isBlank()) {
-                                    credit = header.subtitle
-                                }
-                                if (thumbnailUrl == null) artwork = header.thumbnailUrl
-                            }
-                            description = page.description
-                            if (page.songs.isEmpty()) {
-                                UiState.Error(text(R.string.no_tracks_here))
-                            } else {
-                                more = page.continuation
-                                suggested = page.suggested.withArtwork(thumbnailUrl ?: artwork)
-                                library = page.library
-                                UiState.Success(page.songs.withArtwork(thumbnailUrl ?: artwork))
-                            }
-                        },
-                        onFailure = { UiState.Error(it.friendly()) },
-                    )
+                    UiState.Error("Offline mode: online browsing is disabled")
                 }
             }
             // Update by id — the user may have pushed another page meanwhile.
@@ -2178,6 +2226,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // Not one of YouTube's, and the only one of these that says outright what
         // it is rather than being read off a prefix convention.
         browseId.startsWith(Downloads.PLAYLIST_PREFIX) -> BrowseType.PLAYLIST
+        browseId.startsWith("local:album:") -> BrowseType.ALBUM
+        browseId.startsWith("local:artist:") -> BrowseType.ARTIST
         browseId.startsWith("UC") -> BrowseType.ARTIST
         browseId.startsWith("MPREb") -> BrowseType.ALBUM
         browseId.startsWith("VL") || browseId.startsWith("PL") -> BrowseType.PLAYLIST

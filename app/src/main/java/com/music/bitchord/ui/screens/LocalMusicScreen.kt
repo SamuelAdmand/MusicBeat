@@ -227,6 +227,8 @@ fun LocalMusicScreen(
     onSongTagsOrLyricsSaved: ((Song) -> Unit)? = null,
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
+    initialDrillDownLabel: String? = null,
+    onDrillDownDismiss: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     var activeMenuSong by remember { mutableStateOf<Song?>(null) }
@@ -328,10 +330,27 @@ fun LocalMusicScreen(
 
     val inDrillDown = drillDownLabel != null
 
-    val leaveDrillDown = {
+    val leaveDrillDown: () -> Unit = {
         drillDownLabel = null
         drillDownSongs = emptyList()
         drillDownArt = null
+        onDrillDownDismiss?.invoke()
+    }
+
+    LaunchedEffect(initialDrillDownLabel, songs, selectedTab) {
+        if (!initialDrillDownLabel.isNullOrBlank()) {
+            val target = initialDrillDownLabel.trim()
+            if (selectedTab == LOCAL_TAB_ARTISTS) {
+                drillDownLabel = target
+                drillDownSongs = songs.filter { ArtistSplitter.matchesArtist(it.artist, target) }
+                drillDownArt = null
+            } else {
+                val matching = songs.filter { it.albumName?.trim().equals(target, ignoreCase = true) }
+                drillDownLabel = target
+                drillDownSongs = matching
+                drillDownArt = matching.firstNotNullOfOrNull { it.thumbnailUrl?.takeIf { url -> url.isNotBlank() } }
+            }
+        }
     }
 
     val songDropdownMenu: @Composable (Song) -> Unit = { song ->

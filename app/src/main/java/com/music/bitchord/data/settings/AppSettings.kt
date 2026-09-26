@@ -152,7 +152,7 @@ enum class LibrarySort {
  * catalogue row can still be dated by: the position it sits at. A playlist's
  * running order is the order songs were added in — YouTube Music appends each
  * addition at the foot — so read backwards it *is* a date order, newest first.
- * DetailScreen.kt holds the sort itself. Persisted app-wide rather than per
+ * Drill-down and playlist views hold the sort itself. Persisted app-wide rather than per
  * page: one choice, kept until the user makes another.
  */
 enum class SongSort {

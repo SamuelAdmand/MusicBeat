@@ -37,12 +37,5 @@ suspend fun loadAutoplayTracks(
     seedSong: Song,
     limit: Int = MAX_QUEUED_AUTOPLAY,
 ): Result<List<Song>> {
-    val seed = youtubeSeedFor(seedSong) ?: return Result.success(emptyList())
-    val related = YtMusicRepository.radio(seed).getOrElse { return Result.failure(it) }
-    val extra = QueueBuilder.extend(existing, related, limit)
-    if (extra.isEmpty()) return Result.success(emptyList())
-
-    return Result.success(extra.map {
-        it.copy(fromAutoplay = true, radioName = seedSong.radioName)
-    })
+    return Result.success(emptyList())
 }
